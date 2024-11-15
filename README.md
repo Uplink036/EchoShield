@@ -24,7 +24,7 @@ architecture-beta
     audio:B -- T:a_m
     a_m:R --> L:model
     model:R --> L:asr_attack
-    asr_attack:R -- L:text_attack
+    asr_attack:R --> L:text_attack
 
     junction a_a
     audio:T -- B:a_a
