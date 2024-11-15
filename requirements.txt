@@ -1,0 +1,4 @@
+numpy
+openai-whisper
+torch==2.3.0
+pandas
