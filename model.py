@@ -13,21 +13,7 @@ import os
 
 
 class AudioObfuscationEnv(gym.Env):
-    def __init__(self, dataset, asr_model):
-        super(AudioObfuscationEnv, self).__init__()
-
-        self.dataset = dataset  # List of (audio_file, transcription)
-        self.asr_model = asr_model  # Pretrained ASR model
-        self.current_index = 0  # Track which file is being used
-
-        self._load_audio_file(self.dataset[self.current_index])
-
-        self.action_space = spaces.Box(
-            low=-0.1, high=0.1, shape=self.audio_signal.shape, dtype=np.float32)
-        self.observation_space = spaces.Box(
-            low=-1.0, high=1.0, shape=self.audio_signal.shape, dtype=np.float32)
-
-    def __init__(self, dataset, asr_model):
+    def __init__(self, dataset:list, asr_model:whisper.model):
         super(AudioObfuscationEnv, self).__init__()
 
         self.dataset = dataset  # List of (audio_file, transcription)
@@ -38,15 +24,15 @@ class AudioObfuscationEnv(gym.Env):
         self._load_audio_file(self.dataset[self.current_index])
 
         self.action_space = spaces.Box(
-            low=-0.1, high=0.1, shape=self.audio_signal.shape, dtype=np.float32)
+            low=-0.5, high=0.5, shape=self.audio_signal.shape, dtype=np.float32)
         self.observation_space = spaces.Box(
-            low=-1.0, high=1.0, shape=self.audio_signal.shape, dtype=np.float32)
+            low=-5.0, high=5.0, shape=self.audio_signal.shape, dtype=np.float32)
 
-    def _load_audio_file(self, data):
+    def _load_audio_file(self, data: dict):
         self.audio_signal, _ = librosa.load(data["audio_file"], sr=44100)
         self.transcription = data["transcription"]
 
-    def step(self, action):
+    def step(self, action: np.ndarray):
         # Apply the action (noise) to the audio
         print("Action: ", action)
         print("Audio Signal: ", self.audio_signal)
@@ -91,11 +77,11 @@ class AudioObfuscationEnv(gym.Env):
         pass
 
 
-def make_env(dataset, asr_model, rank):
+def make_env(dataset:list, asr_model:whisper.model, rank:int):
     """
-    Returns a function that creates an instance of the environment.
-    :param dataset: List of (audio_file, transcription) pairs
-    :param asr_model: Pretrained ASR model
+    Returns a function that creates an instance of the environment. \n
+    :param dataset: List of (audio_file, transcription) pairs \n
+    :param asr_model: Pretrained ASR model \n
     :param rank: Index of the environment (used for debugging/logging)
     """
     def _init():

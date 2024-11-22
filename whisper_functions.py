@@ -47,11 +47,13 @@ def transcribe_compare_annotations(audio_dir):
         if os.path.exists(os.path.join(audio_dir, annotation_file)):
             with open(os.path.join(audio_dir, annotation_file), "r") as f:
                 annotation = f.read()
-                
+                annotation = annotation.replace("\n", " ")
+
         else:
             annotation = None
 
         result_df.loc[len(result_df)] = [file, annotation, transcription]
+        print(result_df.tail(1))
     return result_df
 
 
