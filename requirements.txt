@@ -7,3 +7,6 @@ keras==3.6.0
 gymnasium==1.0.0
 stable_baselines3==2.4.0
 levenshtein==0.26.1
+matplotlib==3.9.2
+scipy==1.14.1
+pydub==0.25.1
