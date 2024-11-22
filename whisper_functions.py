@@ -3,7 +3,6 @@ import os
 import torch
 import pandas as pd
 
-
 def transcribe(model, input_file: str, cuda: bool = False):
     """
     Transcribe the given audio using the given Whisper model. \n
