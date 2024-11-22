@@ -1,5 +1,5 @@
 dependencies: ## Install all project requirements
-	sudo apt update && sudo apt install ffmpeg -Y
+	sudo apt update && sudo apt install ffmpeg -y
 	pip install -r requirements.txt
 
 .PHONY: data
