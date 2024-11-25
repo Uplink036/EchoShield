@@ -6,10 +6,10 @@ from gymnasium import spaces
 import whisper
 import torch
 import Levenshtein
-import librosa
 from whisper_functions import transcribe
 import random
 import os
+from audio import get_wav_info, write_waw
 
 
 class AudioObfuscationEnv(gym.Env):
@@ -24,12 +24,13 @@ class AudioObfuscationEnv(gym.Env):
         self._load_audio_file(self.dataset[self.current_index])
 
         self.action_space = spaces.Box(
-            low=-0.5, high=0.5, shape=self.audio_signal.shape, dtype=np.float32)
+            low=-0.5, high=0.5, shape=self.audio_signal.shape, dtype=np.int16)
         self.observation_space = spaces.Box(
-            low=-5.0, high=5.0, shape=self.audio_signal.shape, dtype=np.float32)
+            low=-5.0, high=5.0, shape=self.audio_signal.shape, dtype=np.int16)
 
     def _load_audio_file(self, data: dict):
-        self.audio_signal, _ = librosa.load(data["audio_file"], sr=44100)
+        wav_info = get_wav_info(data["audio_file"])
+        self.audio_signal =  wav_info["data"][0][0:50_000]
         self.transcription = data["transcription"]
 
     def step(self, action: np.ndarray):
@@ -39,14 +40,11 @@ class AudioObfuscationEnv(gym.Env):
         obfuscated_audio = self.audio_signal + action
 
         # save to file for transcription
-        librosa.output.write_wav(
-            "obfuscated_audio.wav", obfuscated_audio, 44100)
-
+        write_waw("obfuscated_audio.wav", 44100, obfuscated_audio)
         # Get transcription from ASR model
         predicted_transcription = transcribe(
             model=self.asr_model, input_file="obfuscated_audio.wav", cuda=False)
 
-        print("Predicted Transcription: ", predicted_transcription)
         # Calculate reward
         transcription_similarity = self._calculate_similarity(
             self.transcription, predicted_transcription)
@@ -97,7 +95,7 @@ if __name__ == "__main__":
     # Preprocessed audio waveform
     files = os.listdir(
         "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)")
-    audio_files = [f for f in files if f.endswith(".wav")]
+    audio_files = ["data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/" + f for f in files if f.endswith(".wav")]
     transcriptions = [f.replace(".wav", ".txt") for f in audio_files]
     dataset = [
         {"audio_file": f, "transcription": t} for f, t in zip(audio_files, transcriptions)
@@ -107,14 +105,14 @@ if __name__ == "__main__":
     asr_model = whisper.load_model("base").to(device)
 
     # Number of parallel environments
-    num_envs = 4
+    num_envs = 1
 
     # Create the vectorized environment
     envs = SubprocVecEnv([make_env(dataset, asr_model, i)
                          for i in range(num_envs)])
     # Train the PPO agent
-    model = PPO("MlpPolicy", envs, verbose=1)
-    model.learn(total_timesteps=100, progress_bar=True)
+    model = PPO("MlpPolicy", envs, verbose=0, n_steps=24)
+    model.learn(total_timesteps=10, progress_bar=True)
 
     # Save the model
     model.save("audio_obfuscation_ppo")
