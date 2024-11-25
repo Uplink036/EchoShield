@@ -19,7 +19,7 @@ class AudioObfuscationEnv(gym.Env):
         self.dataset = dataset  # List of (audio_file, transcription)
         self.asr_model = asr_model  # Pretrained ASR model
         self.current_index = 0  # Track which file is being used
-
+        self._length_of_file = 3*44100
         # Load the first audio file
         self._load_audio_file(self.dataset[self.current_index])
 
@@ -30,7 +30,10 @@ class AudioObfuscationEnv(gym.Env):
 
     def _load_audio_file(self, data: dict):
         wav_info = get_wav_info(data["audio_file"])
-        self.audio_signal =  wav_info["data"][0][0:50_000]
+        self.audio_signal = wav_info["data"][0][0:self._length_of_file]
+        if wav_info["length"] < self._length_of_file:
+            self.audio_signal = np.pad(
+                self.audio_signal, (0, self._length_of_file - len(self.audio_signal)))
         self.transcription = data["transcription"]
 
     def step(self, action: np.ndarray):
