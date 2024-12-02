@@ -1,13 +1,10 @@
 import random
-import gym
 import numpy as np
 from collections import deque
 import tensorflow as tf
-from keras
-from keras.models import Sequential  # type: ignore
-from keras.layers import Dense  # type: ignore
-from keras.optimizers  # type: ignore
-import Adam
+from keras.models import Model
+from keras.layers import Input, Dense, Conv1D, BatchNormalization, Activation, LSTM, Flatten
+from keras.optimizers import Adam
 import os
 
 # https://domino.ai/blog/deep-reinforcement-learning#body__1eeb210e0437
@@ -24,13 +21,31 @@ class DQNAgent:
         self.model = self._build_model()
  
     def _build_model(self):
-        model = Sequential() 
-        model.add(Dense(32, activation="relu",
-                        input_dim=self.state_size))
-        model.add(Dense(32, activation="relu"))
-        model.add(Dense(self.action_size, activation="linear"))
-        model.compile(loss="mse",
-                     optimizer=Adam(lr=self.learning_rate))
+        input_signal = Input(shape=(self.state_size,1), name="InputSignal")
+
+        x = Conv1D(filters=64, kernel_size=5, strides=2, padding="same")(input_signal)
+        x = BatchNormalization()(x)
+        x = Activation("relu")(x)
+
+        x = Conv1D(filters=128, kernel_size=5, strides=2, padding="same")(x)
+        x = BatchNormalization()(x)
+        x = Activation("relu")(x)
+
+        x = Conv1D(filters=256, kernel_size=5, strides=2, padding="same")(x)
+        x = BatchNormalization()(x)
+        x = Activation("relu")(x)
+
+        x = LSTM(128, return_sequences=True)(x)
+        x = LSTM(64)(x)
+
+        x = Dense(256, activation="relu")(x)
+        x = Dense(512, activation="relu")(x)
+
+        output_signal = Dense(self.action_size, activation="tanh", name="OutputSignal")(x)
+
+        model = Model(inputs=input_signal, outputs=output_signal)
+        model.compile(optimizer="adam", loss="mean_squared_error")
+
         return model
  
     def remember(self, state, action, reward, next_state, done): 
@@ -40,11 +55,13 @@ class DQNAgent:
     def train(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
         for state, action, reward, next_state, done in minibatch:
+            state = state.reshape(1, -1, 1) 
+            next_state = next_state.reshape(1, -1, 1) 
             target = reward # if done 
             if not done:
                 target = (reward +
                           self.gamma *
-                          np.amax(self.model.predict(next_state)[0]))
+                          np.amax(self.model.predict(next_state)))
             target_f = self.model.predict(state)
             target_f[0][action] = target
             self.model.fit(state, target_f, epochs=1, verbose=0) 
@@ -53,8 +70,8 @@ class DQNAgent:
 
     def act(self, state):
         if np.random.rand() <= self.epsilon: 
-            low = -1
-            high = 1
+            low = -2000
+            high = 2000
             return np.random.randint(low=low, high=high, size=self.action_size, dtype=np.int16)
         act_values = self.model.predict(state)
         return np.ndarray(act_values, np.int16)
