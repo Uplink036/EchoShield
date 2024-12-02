@@ -87,6 +87,16 @@ def write_waw(name: str, samplerate: int, data: np.ndarray):
                          sample_width=data.dtype.itemsize)
     audio.export(name, "wav")
 
+def make_test_attack(input, low, high):
+    """
+    Makes a test attack with a low and high value
+    
+    :param low: A float noting the lowest value
+    :param high: A float noting the highest value
+    """
+    
+    return input + np.random.uniform(low, high, 1)
+
 if __name__ == "__main__":
     filepath = './data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/female1_angry_4a_1.wav'    
     waw_info = get_wav_info(filepath)
