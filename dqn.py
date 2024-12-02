@@ -9,13 +9,14 @@ import os
 
 # https://domino.ai/blog/deep-reinforcement-learning#body__1eeb210e0437
 class DQNAgent:
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, action_magnitude=2000):
         self.state_size = state_size
         self.action_size = action_size
+        self.action_magnitude = action_magnitude
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95
         self.epsilon = 1.0
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.95
         self.epsilon_min = 0.01
         self.learning_rate = 0.001
         self.model = self._build_model()
@@ -23,25 +24,18 @@ class DQNAgent:
     def _build_model(self):
         input_signal = Input(shape=(self.state_size,1), name="InputSignal")
 
-        x = Conv1D(filters=64, kernel_size=5, strides=2, padding="same")(input_signal)
+        x = Conv1D(filters=32, kernel_size=5, strides=2, padding="same")(input_signal)
         x = BatchNormalization()(x)
         x = Activation("relu")(x)
 
-        x = Conv1D(filters=128, kernel_size=5, strides=2, padding="same")(x)
+        x = Conv1D(filters=64, kernel_size=5, strides=2, padding="same")(x)
         x = BatchNormalization()(x)
         x = Activation("relu")(x)
 
-        x = Conv1D(filters=256, kernel_size=5, strides=2, padding="same")(x)
-        x = BatchNormalization()(x)
-        x = Activation("relu")(x)
-
-        x = LSTM(128, return_sequences=True)(x)
-        x = LSTM(64)(x)
-
+        x = Flatten()(x)
         x = Dense(256, activation="relu")(x)
-        x = Dense(512, activation="relu")(x)
 
-        output_signal = Dense(self.action_size, activation="tanh", name="OutputSignal")(x)
+        output_signal = Dense(self.action_size, activation="relu", name="OutputSignal")(x)
 
         model = Model(inputs=input_signal, outputs=output_signal)
         model.compile(optimizer="adam", loss="mean_squared_error")
@@ -70,11 +64,12 @@ class DQNAgent:
 
     def act(self, state):
         if np.random.rand() <= self.epsilon: 
-            low = -2000
-            high = 2000
+            low = -self.action_magnitude
+            high = self.action_magnitude
             return np.random.randint(low=low, high=high, size=self.action_size, dtype=np.int16)
+        state = state.reshape(1, -1, 1) 
         act_values = self.model.predict(state)
-        return np.ndarray(act_values, np.int16)
+        return act_values.astype(np.int16)
 
     def save(self, name): 
         self.model.save_weights(name)
