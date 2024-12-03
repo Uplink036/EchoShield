@@ -78,7 +78,6 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
     def act(self, state):
-        if np.random.rand() <= self.epsilon: 
         low = -self.action_magnitude
         high = self.action_magnitude
         if np.random.rand() <= self.epsilon: 

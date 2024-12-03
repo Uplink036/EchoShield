@@ -45,6 +45,18 @@ class AudioObfuscationEnv(gym.Env):
                 self.audio_signal, (0, self._length_of_file - len(self.audio_signal)))
         self.transcription = data["transcription"]
 
+    def _noise_reward(self, modification, alpha=1.0):
+            # Normalize modification relative to the maximum allowed range (2000)
+            modification_normalized = modification / 2000  # Larger changes penalized more
+            mae = np.mean(modification_normalized)
+
+            noise_penalty = alpha * mae
+            reward = max(0, 1 - np.abs(noise_penalty))
+            print(f"noise_{reward=}")
+            
+            return reward
+
+
     def step(self, action: np.ndarray):
         # Apply the action (noise) to the audio
         print("Action: ", action)
@@ -66,7 +78,7 @@ class AudioObfuscationEnv(gym.Env):
         transcription_similarity = self._calculate_similarity(
             actual_transcription, predicted_transcription)
 
-        audio_similarity = 2000/(np.sum(action)**2+1)
+        audio_similarity = self._noise_reward(action, 0.5)
         # Lower similarity and smaller noise are better
         reward = 1-transcription_similarity+audio_similarity
         # Save metrics
@@ -77,7 +89,7 @@ class AudioObfuscationEnv(gym.Env):
         # Single-step environment ends immediately
         print(f"{transcription_similarity=}")
         print(f"{reward=}")
-        if transcription_similarity < 0.9:
+        if transcription_similarity < 0.85:
             terminated = True # Single-step environment
         else:
             terminated = False
