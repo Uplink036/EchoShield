@@ -48,27 +48,44 @@ class DQNAgent:
 
     def train(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
-        for state, action, reward, next_state, done in minibatch:
-            state = state.reshape(1, -1, 1) 
-            next_state = next_state.reshape(1, -1, 1) 
-            target = reward # if done 
-            if not done:
-                target = (reward +
-                          self.gamma *
-                          np.amax(self.model.predict(next_state)))
-            target_f = self.model.predict(state)
-            target_f[0][action] = target
-            self.model.fit(state, target_f, epochs=1, verbose=0) 
+    
+        states = np.array([state for state, _, _, _, _ in minibatch]).reshape(batch_size, -1, 1)
+        next_states = np.array([next_state for _, _, _, next_state, _ in minibatch]).reshape(batch_size, -1, 1)
+        actions = [action for _, action, _, _, _ in minibatch]
+        rewards = [reward for _, _, reward, _, _ in minibatch]
+        dones = [done for _, _, _, _, done in minibatch]
+
+        next_q_values = self.model.predict(next_states, batch_size=batch_size)
+
+        targets = []
+        for i in range(batch_size):
+            target = rewards[i]
+            if not dones[i]:
+                target += self.gamma * np.amax(next_q_values[i])
+            targets.append(target)
+
+        q_values = self.model.predict(states, batch_size=batch_size)
+
+        # Update Q-values for the chosen actions
+        for i in range(batch_size):
+            q_values[i][actions[i]] = targets[i]
+
+        # Fit the model on the batch
+        self.model.fit(states, q_values, batch_size=batch_size, epochs=1, verbose=0)
+
+        # Decay epsilon
         if self.epsilon > self.epsilon_min:
-                self.epsilon *= self.epsilon_decay
+            self.epsilon *= self.epsilon_decay
 
     def act(self, state):
         if np.random.rand() <= self.epsilon: 
-            low = -self.action_magnitude
-            high = self.action_magnitude
+        low = -self.action_magnitude
+        high = self.action_magnitude
+        if np.random.rand() <= self.epsilon: 
             return np.random.randint(low=low, high=high, size=self.action_size, dtype=np.int16)
         state = state.reshape(1, -1, 1) 
-        act_values = self.model.predict(state)
+        act_values = self.model.predict(state)[0]
+        act_values = np.clip(act_values, low, high)
         return act_values.astype(np.int16)
 
     def save(self, name): 
