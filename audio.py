@@ -6,7 +6,7 @@ import numpy as np
 
 def pydub_to_np(audio: AudioSegment) -> np.ndarray:
     """
-    Converts pydub audio segment into more standard numpy array.
+    Converts pydub audio segment into our standard numpy array. Which is 32 bits float.
 
     :param audio: A pydub AuidoSegment
     """
@@ -42,11 +42,14 @@ def plot_waw(filepath):
     """
     wav_info = get_wav_info(filepath)
     time = np.linspace(0., wav_info["duration"], wav_info["length"])
-    plt.plot(time, wav_info["data"], label="Channel")
+    amplitude = wav_info["data"]
+    if time.shape != wav_info["data"].shape:
+        amplitude = amplitude[0]
+    plt.plot(time, amplitude, label="Channel")
     plt.legend()
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
-    plt.show()
+
 
 
 def play_file(filepath):
