@@ -8,8 +8,10 @@ from keras.optimizers import Adam
 import os
 
 # https://domino.ai/blog/deep-reinforcement-learning#body__1eeb210e0437
+
+
 class DQNAgent:
-    def __init__(self, state_size, action_size, action_magnitude=2000):
+    def __init__(self, state_size, action_size, action_magnitude=2):
         self.state_size = state_size
         self.action_size = action_size
         self.action_magnitude = action_magnitude
@@ -20,11 +22,12 @@ class DQNAgent:
         self.epsilon_min = 0.01
         self.learning_rate = 0.001
         self.model = self._build_model()
- 
-    def _build_model(self):
-        input_signal = Input(shape=(self.state_size,1), name="InputSignal")
 
-        x = Conv1D(filters=32, kernel_size=5, strides=2, padding="same")(input_signal)
+    def _build_model(self):
+        input_signal = Input(shape=(self.state_size, 1), name="InputSignal")
+
+        x = Conv1D(filters=32, kernel_size=5, strides=2,
+                   padding="same")(input_signal)
         x = BatchNormalization()(x)
         x = Activation("relu")(x)
 
@@ -35,22 +38,25 @@ class DQNAgent:
         x = Flatten()(x)
         x = Dense(256, activation="relu")(x)
 
-        output_signal = Dense(self.action_size, activation="relu", name="OutputSignal")(x)
+        output_signal = Dense(
+            self.action_size, activation="relu", name="OutputSignal")(x)
 
         model = Model(inputs=input_signal, outputs=output_signal)
         model.compile(optimizer="adam", loss="mean_squared_error")
 
         return model
- 
-    def remember(self, state, action, reward, next_state, done): 
+
+    def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action,
                             reward, next_state, done))
 
     def train(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
-    
-        states = np.array([state for state, _, _, _, _ in minibatch]).reshape(batch_size, -1, 1)
-        next_states = np.array([next_state for _, _, _, next_state, _ in minibatch]).reshape(batch_size, -1, 1)
+
+        states = np.array([state for state, _, _, _, _ in minibatch]).reshape(
+            batch_size, -1, 1)
+        next_states = np.array(
+            [next_state for _, _, _, next_state, _ in minibatch]).reshape(batch_size, -1, 1)
         actions = [action for _, action, _, _, _ in minibatch]
         rewards = [reward for _, _, reward, _, _ in minibatch]
         dones = [done for _, _, _, _, done in minibatch]
@@ -71,7 +77,8 @@ class DQNAgent:
             q_values[i][actions[i]] = targets[i]
 
         # Fit the model on the batch
-        self.model.fit(states, q_values, batch_size=batch_size, epochs=1, verbose=0)
+        self.model.fit(states, q_values, batch_size=batch_size,
+                       epochs=1, verbose=0)
 
         # Decay epsilon
         if self.epsilon > self.epsilon_min:
@@ -80,12 +87,12 @@ class DQNAgent:
     def act(self, state):
         low = -self.action_magnitude
         high = self.action_magnitude
-        if np.random.rand() <= self.epsilon: 
+        if np.random.rand() <= self.epsilon:
             return np.random.randint(low=low, high=high, size=self.action_size, dtype=np.int16)
-        state = state.reshape(1, -1, 1) 
+        state = state.reshape(1, -1, 1)
         act_values = self.model.predict(state)[0]
         act_values = np.clip(act_values, low, high)
         return act_values.astype(np.int16)
 
-    def save(self, name): 
+    def save(self, name):
         self.model.save_weights(name)
