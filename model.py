@@ -16,13 +16,13 @@ import matplotlib.pyplot as plt
 
 
 class AudioObfuscationEnv(gym.Env):
-    def __init__(self, dataset: list, asr_model: whisper.model):
+    def __init__(self, dataset: list, asr_model: whisper.model, length_of_file):
         super(AudioObfuscationEnv, self).__init__()
 
         self.dataset = dataset  # List of (audio_file, transcription)
         self.asr_model = asr_model  # Pretrained ASR model
         self.current_index = 0  # Track which file is being used
-        self._length_of_file = 3*44100
+        self._length_of_file = length_of_file
         # Load the first audio file
         self._load_audio_file(self.dataset[self.current_index])
         self.state = self.audio_signal
@@ -45,11 +45,20 @@ class AudioObfuscationEnv(gym.Env):
                 self.audio_signal, (0, self._length_of_file - len(self.audio_signal)))
         self.transcription = data["transcription"]
 
+    def _noise_reward(self, modification, alpha=1.0):
+            # Normalize modification relative to the maximum allowed range (2000)
+            modification_normalized = modification / 2000  # Larger changes penalized more
+            mae = np.mean(modification_normalized)
+
+            noise_penalty = alpha * mae
+            reward = max(0, 1 - np.abs(noise_penalty))
+            print(f"noise_{reward=}")
+            
+            return reward
+
+
     def step(self, action: np.ndarray):
         # Apply the action (noise) to the audio
-        action_modifier = 500
-        action *= action_modifier
-        action = action.astype(np.int16)
         print("Action: ", action)
         print("Audio Signal: ", self.audio_signal)
 
@@ -69,7 +78,7 @@ class AudioObfuscationEnv(gym.Env):
         transcription_similarity = self._calculate_similarity(
             actual_transcription, predicted_transcription)
 
-        audio_similarity = action_modifier/(np.sum(action)**2+1)
+        audio_similarity = self._noise_reward(action, 0.5)
         # Lower similarity and smaller noise are better
         reward = 1-transcription_similarity+audio_similarity
         # Save metrics
@@ -78,7 +87,12 @@ class AudioObfuscationEnv(gym.Env):
         
         # Define episode termination conditions
         # Single-step environment ends immediately
-        terminated = True # Single-step environment
+        print(f"{transcription_similarity=}")
+        print(f"{reward=}")
+        if transcription_similarity < 0.85:
+            terminated = True # Single-step environment
+        else:
+            terminated = False
         truncated = False  # Not using truncation in this case
         info = {}  # Additional debugging info if needed
 
@@ -88,7 +102,7 @@ class AudioObfuscationEnv(gym.Env):
         # Load the next audio file
         self.current_index = (self.current_index + 1) % len(self.dataset)
         self._load_audio_file(self.dataset[self.current_index])
-        return self.audio_signal, {}
+        return self.audio_signal
 
     def _calculate_similarity(self, original, predicted):
         if not isinstance(original, str) or not isinstance(predicted, str):
