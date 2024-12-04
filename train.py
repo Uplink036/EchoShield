@@ -22,7 +22,7 @@ def getASR():
 
 if __name__ == "__main__":
     dataset = getAudioData("data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/")
-    audio_length = 44100*2
+    audio_length = 1025
     env = AudioObfuscationEnv(dataset, getASR(), audio_length)
     agent = DQNAgent(audio_length, audio_length)
     

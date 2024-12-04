@@ -39,7 +39,7 @@ class AudioObfuscationEnv(gym.Env):
 
     def _load_audio_file(self, data: dict):
         wav_info = get_wav_info(data["audio_file"])
-        self.audio_signal = wav_info["data"][0][0:self._length_of_file]
+        self.audio_signal = wav_info["data"][0][0:self._length_of_file] # Go to FFT
         if wav_info["length"] < self._length_of_file:
             self.audio_signal = np.pad(
                 self.audio_signal, (0, self._length_of_file - len(self.audio_signal)))
@@ -62,12 +62,15 @@ class AudioObfuscationEnv(gym.Env):
         print("Action: ", action)
         print("Audio Signal: ", self.audio_signal)
 
-        obfuscated_audio = self.audio_signal + action
-        print("Obfuscated Audio: ", obfuscated_audio)
+        obfuscated_audio = self.audio_signal + action #FFT Signal
 
+        #CONVERT BACK TO WAV
+
+        print("Obfuscated Audio: ", obfuscated_audio)
         # save to file for transcription
         write_waw("obfuscated_audio.wav", 44100, obfuscated_audio)
         # Get transcription from ASR model
+
         predicted_transcription = transcribe(
             model=self.asr_model, input_file="obfuscated_audio.wav", cuda=False)
 
@@ -96,6 +99,7 @@ class AudioObfuscationEnv(gym.Env):
         truncated = False  # Not using truncation in this case
         info = {}  # Additional debugging info if needed
 
+        # Send FFT signal
         return obfuscated_audio, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
