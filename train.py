@@ -22,12 +22,12 @@ def getASR():
 
 if __name__ == "__main__":
     dataset = getAudioData("data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/")
-    audio_length = 44100
+    audio_length = 44100*2
     env = AudioObfuscationEnv(dataset, getASR(), audio_length)
     agent = DQNAgent(audio_length, audio_length)
     
     batch_size = 32
-    n_episodes = 200
+    n_episodes = 100
 
     for e in range(n_episodes):
         state = env.reset()
@@ -43,6 +43,8 @@ if __name__ == "__main__":
                 print("episode: {}/{}, score: {}, e: {:.2}"
                     .format(e, n_episodes-1, time, agent.epsilon))
             time += 1
+            if time == 10:
+                done = True
         if len(agent.memory) > batch_size:
             agent.train(batch_size) 
     # if e % 50 == 0:
