@@ -5,6 +5,7 @@ import numpy as np
 import librosa
 import soundfile as sf
 
+
 def get_wav_info(filepath):
     """
     Gets the needed info from a .wav file and returns an dict
@@ -37,6 +38,7 @@ def plot_waw(filepath):
     plt.legend()
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
+
 
 def play_file(filepath):
     """
@@ -80,6 +82,7 @@ def write_waw(name: str, samplerate: int, data: np.ndarray):
     """
     sf.write("./"+name, data, samplerate)
 
+
 def make_test_attack(audio, low, high):
     """
     Makes a test attack with a low and high value
@@ -93,10 +96,11 @@ def make_test_attack(audio, low, high):
 
 if __name__ == "__main__":
     filepath = './data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/female1_angry_4a_1.wav'
-    waw_info = get_wav_info(filepath)
-    print(waw_info)
-    plot_waw(filepath)
-    play_file(filepath)
-    write_waw("test.wav", waw_info["samplerate"], waw_info["data"])
-    play_file("test.wav")
+    # waw_info = get_wav_info(filepath)
+    # print(waw_info)
+    # plot_waw(filepath)
+    # play_file(filepath)
+    # write_waw("test.wav", waw_info["samplerate"], waw_info["data"])
+    # play_file("test.wav")
+    plot_waw("./data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/female1_angry_10a_2.wav")
     plt.show()

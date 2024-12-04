@@ -27,7 +27,7 @@ if __name__ == "__main__":
         "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/")
     audio_length = 257
     env = AudioObfuscationEnv(dataset, getASR(), audio_length)
-    agent = DQNAgent(audio_length, audio_length)
+    agent = DQNAgent(audio_length, audio_length, action_magnitude=10)
 
     batch_size = 32
     n_episodes = 100
@@ -48,6 +48,7 @@ if __name__ == "__main__":
             time += 1
             if time == 10:
                 done = True
+        break
         if len(agent.memory) > batch_size:
             agent.train(batch_size)
     # if e % 50 == 0:

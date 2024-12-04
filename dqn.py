@@ -11,7 +11,7 @@ import os
 
 
 class DQNAgent:
-    def __init__(self, state_size, action_size, action_magnitude=2):
+    def __init__(self, state_size, action_size, action_magnitude=10):
         self.state_size = state_size
         self.action_size = action_size
         self.action_magnitude = action_magnitude
@@ -88,11 +88,13 @@ class DQNAgent:
         low = -self.action_magnitude
         high = self.action_magnitude
         if np.random.rand() <= self.epsilon:
-            return np.random.randint(low=low, high=high, size=self.action_size, dtype=np.int16)
-        state = state.reshape(1, -1, 1)
-        act_values = self.model.predict(state)[0]
+            act_values = np.random.random(
+                size=self.action_size)*self.action_magnitude*2 - self.action_magnitude
+        else:
+            state = state.reshape(1, -1, 1)
+            act_values = self.model.predict(state)[0]
         act_values = np.clip(act_values, low, high)
-        return act_values.astype(np.int16)
+        return act_values.astype(np.float32)
 
     def save(self, name):
         self.model.save_weights(name)

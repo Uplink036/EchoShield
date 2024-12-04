@@ -45,7 +45,7 @@ class AudioObfuscationEnv(gym.Env):
     def _load_audio_file(self, data: dict):
         wav_info = get_wav_info(data["audio_file"])
         # Go to FFT
-        self.audio_signal = wav_info["data"][0]
+        self.audio_signal = wav_info["data"]
         self.sample_rate = wav_info["samplerate"]
         self.transcription = data["transcription"]
 
@@ -62,23 +62,17 @@ class AudioObfuscationEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         # Apply the action (noise) to the audio
-        print("Action: ", action)
-        print("Audio Signal: ", self.audio_signal)
 
         S_full, phase = librosa.magphase(
-            librosa.stft(self.audio_signal.astype(np.float32), n_fft=512))
-        print("Shape sfull:", S_full.shape)
-        print("Shape phase:", phase.shape)
+            librosa.stft(self.audio_signal, n_fft=512))
         mask = action[:, None]
-        print("Mask", mask)
         mask = mask.astype(float)
         # mask = medfilt(mask, kernel_size=(1, 5))
         S_obfuscated = mask * S_full
 
         # CONVERT BACK TO WAV
         obfuscated_audio = librosa.istft(S_obfuscated * phase)
-        print("Obfuscated Audio: ", obfuscated_audio)
-        print("Original Audio: ", self.audio_signal)
+
         # save to file for transcription
         write_waw("obfuscated_audio.wav", 44100, obfuscated_audio)
         # Get transcription from ASR model
