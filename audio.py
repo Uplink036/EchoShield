@@ -5,7 +5,7 @@ import numpy as np
 
 def pydub_to_np(audio: AudioSegment) -> np.ndarray:
     """
-    Converts pydub audio segment into more standard numpy array.
+    Converts pydub audio segment into our standard numpy array. Which is 32 bits float.
 
     :param audio: A pydub AuidoSegment
     """
@@ -38,11 +38,14 @@ def plot_waw(filepath):
     """
     wav_info = get_wav_info(filepath)
     time = np.linspace(0., wav_info["duration"], wav_info["length"])
-    plt.plot(time, wav_info["data"], label="Channel")
+    amplitude = wav_info["data"]
+    if time.shape != wav_info["data"].shape:
+        amplitude = amplitude[0]
+    plt.plot(time, amplitude, label="Channel")
     plt.legend()
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
-    plt.show()
+
 
 def play_file(filepath):
     """
@@ -88,10 +91,12 @@ def write_waw(name: str, samplerate: int, data: np.ndarray):
     audio.export(name, "wav")
 
 if __name__ == "__main__":
-    filepath = './data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/female1_angry_4a_1.wav'    
+    filepath = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/male1_apologetic_6b_1.wav"   
     waw_info = get_wav_info(filepath)
     print(waw_info)
     plot_waw(filepath)
-    play_file(filepath)
-    write_waw("test.wav", waw_info["samplerate"], waw_info["data"])
-    play_file("test.wav")
+    #play_file(filepath)
+    #write_waw("test.wav", waw_info["samplerate"], waw_info["data"])
+    #plot_waw("test.wav")
+    plot_waw("obfuscated_audio.wav")
+    plt.show()
