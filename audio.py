@@ -2,17 +2,8 @@ from pydub import AudioSegment
 from pydub.playback import play
 import matplotlib.pyplot as plt
 import numpy as np
-
-def pydub_to_np(audio: AudioSegment) -> np.ndarray:
-    """
-    Converts pydub audio segment into our standard numpy array. Which is 32 bits float.
-
-    :param audio: A pydub AuidoSegment
-    """
-    samples = audio.get_array_of_samples()
-    samples = np.array(samples)
-    samples = samples.reshape(audio.channels, -1, order='F') # Get in the coorect shape
-    return samples
+import librosa
+import soundfile as sf
 
 def get_wav_info(filepath):
     """
@@ -21,19 +12,20 @@ def get_wav_info(filepath):
     :param filepath: A path to a file ending with .wav
     """
     wav_info = {}
-    audio: AudioSegment = AudioSegment.from_wav(filepath)
-    wav_info["data"] = pydub_to_np(audio)
-    wav_info["samplerate"] = audio.frame_rate
+    audio, sampling = sf.read(filepath, dtype='float32')
+    wav_info["data"] = audio
+    wav_info["samplerate"] = sampling
     # Gives a h, which means 16 bits
-    wav_info["duration"] = audio.duration_seconds
-    wav_info["length"] = int(audio.frame_count())
-    wav_info["channels"] = audio.channels
+    wav_info["duration"] = len(audio) / sampling
+    wav_info["length"] = len(audio)
+    wav_info["channels"] = 1
     return wav_info
+
 
 def plot_waw(filepath):
     """
     Plots the audio amplitude of a .wav file
-    
+
     :param filepath: A path to a file ending with .wav
     """
     wav_info = get_wav_info(filepath)
@@ -46,57 +38,65 @@ def plot_waw(filepath):
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
 
-
 def play_file(filepath):
     """
     Plays an audio file 
-    
+
     :param filepath: A path to a file ending with .wav
     """
     if filepath.endswith(".wav"):
         play_waw(filepath)
     elif filepath.endswith(".mp3"):
         play_mp3(filepath)
-    
+
+
 def play_waw(filepath):
     """
     Plays a wav audio file 
-    
+
     :param filepath: A path to a file ending with .wav
     """
     sound = AudioSegment.from_wav(filepath)
     play(sound)
 
+
 def play_mp3(filepath):
     """
     Plays a mp3 audio file 
-    
+
     :param filepath: A path to a file ending with .wav
     """
     sound = AudioSegment.from_mp3(filepath)
     play(sound)
 
+
 def write_waw(name: str, samplerate: int, data: np.ndarray):
     """
     Takes the input paramaters and writes a wav audio file.
-    
+
     :param name: An existing path to a file ending with .wav
     :param samplerate: A integer noting the samplingrate of the audio
     :param data: A numpy array consiting of 16 bits int
     """
-    audio = AudioSegment(data.tobytes(),
-                         channels = 1, 
-                         frame_rate=samplerate, 
-                         sample_width=data.dtype.itemsize)
-    audio.export(name, "wav")
+    sf.write("./"+name, data, samplerate)
+
+def make_test_attack(audio, low, high):
+    """
+    Makes a test attack with a low and high value
+
+    :param low: A float noting the lowest value
+    :param high: A float noting the highest value
+    """
+    size = audio["length"]
+    return np.random.randint(low=low, high=high, size=size, dtype=np.int16)
+
 
 if __name__ == "__main__":
-    filepath = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/male1_apologetic_6b_1.wav"   
+    filepath = './data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/female1_angry_4a_1.wav'
     waw_info = get_wav_info(filepath)
     print(waw_info)
     plot_waw(filepath)
-    #play_file(filepath)
-    #write_waw("test.wav", waw_info["samplerate"], waw_info["data"])
-    #plot_waw("test.wav")
-    plot_waw("obfuscated_audio.wav")
+    play_file(filepath)
+    write_waw("test.wav", waw_info["samplerate"], waw_info["data"])
+    play_file("test.wav")
     plt.show()
