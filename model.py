@@ -14,6 +14,11 @@ import os
 from audio import get_wav_info, write_waw
 import matplotlib.pyplot as plt
 
+import numpy as np
+from scipy.signal import medfilt
+import librosa
+import scipy.fftpack as fft
+
 
 class AudioObfuscationEnv(gym.Env):
     def __init__(self, dataset: list, asr_model: whisper.model, length_of_file):
@@ -39,33 +44,41 @@ class AudioObfuscationEnv(gym.Env):
 
     def _load_audio_file(self, data: dict):
         wav_info = get_wav_info(data["audio_file"])
-        self.audio_signal = wav_info["data"][0][0:self._length_of_file] # Go to FFT
+        # Go to FFT
+        self.audio_signal = wav_info["data"][0][0:self._length_of_file]
         if wav_info["length"] < self._length_of_file:
             self.audio_signal = np.pad(
                 self.audio_signal, (0, self._length_of_file - len(self.audio_signal)))
+        self.sample_rate = wav_info["samplerate"]
         self.transcription = data["transcription"]
 
     def _noise_reward(self, modification, alpha=1.0):
-            # Normalize modification relative to the maximum allowed range (2000)
-            modification_normalized = modification / 2000  # Larger changes penalized more
-            mae = np.mean(modification_normalized)
+        # Normalize modification relative to the maximum allowed range (2000)
+        modification_normalized = modification / 2000  # Larger changes penalized more
+        mae = np.mean(modification_normalized)
 
-            noise_penalty = alpha * mae
-            reward = max(0, 1 - np.abs(noise_penalty))
-            print(f"noise_{reward=}")
-            
-            return reward
+        noise_penalty = alpha * mae
+        reward = max(0, 1 - np.abs(noise_penalty))
+        print(f"noise_{reward=}")
 
+        return reward
 
     def step(self, action: np.ndarray):
         # Apply the action (noise) to the audio
         print("Action: ", action)
         print("Audio Signal: ", self.audio_signal)
 
-        obfuscated_audio = self.audio_signal + action #FFT Signal
+        S_full, phase = librosa.magphase(
+            librosa.stft(self.audio_signal.astype(np.float32)))
 
-        #CONVERT BACK TO WAV
+        mask = action
 
+        mask = medfilt(mask, kernel_size=(1, 5))
+
+        S_obfuscated = mask * S_full
+
+        # CONVERT BACK TO WAV
+        obfuscated_audio = librosa.istft(S_obfuscated * phase)
         print("Obfuscated Audio: ", obfuscated_audio)
         # save to file for transcription
         write_waw("obfuscated_audio.wav", 44100, obfuscated_audio)
@@ -86,21 +99,22 @@ class AudioObfuscationEnv(gym.Env):
         reward = 1-transcription_similarity+audio_similarity
         # Save metrics
         with open(self._metrics_file, "a") as f:
-            f.write(f"{self.current_index},{reward},{transcription_similarity},{audio_similarity}\n")
-        
+            f.write(
+                f"{self.current_index},{reward},{transcription_similarity},{audio_similarity}\n")
+
         # Define episode termination conditions
         # Single-step environment ends immediately
         print(f"{transcription_similarity=}")
         print(f"{reward=}")
         if transcription_similarity < 0.85:
-            terminated = True # Single-step environment
+            terminated = True  # Single-step environment
         else:
             terminated = False
         truncated = False  # Not using truncation in this case
         info = {}  # Additional debugging info if needed
 
         # Send FFT signal
-        return obfuscated_audio, reward, terminated, truncated, info
+        return S_obfuscated, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
         # Load the next audio file
