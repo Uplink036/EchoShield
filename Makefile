@@ -6,6 +6,10 @@ dependencies: ## Install all project requirements
 data:
 	mkdir -p data
 	curl -L -o ./data/archive.zip https://www.kaggle.com/api/v1/datasets/download/tli725/jl-corpus
+
+clean: ## Clean *.wav and *.csv files from disk
+	find . -name '*.csv' -delete
+	find . -name '*.wav' -delete
 	
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
