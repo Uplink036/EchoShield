@@ -2,7 +2,7 @@ import os
 import whisper
 import torch
 import numpy as np
-from dqn import DQNAgent
+from dqn import DQNAgent, preprocess_input
 from model import AudioObfuscationEnv
 
 
@@ -34,21 +34,21 @@ if __name__ == "__main__":
 
     for e in range(n_episodes):
         state = env.reset()
+        agent_state = preprocess_input(state)
         done = False
         time = 0
         while not done:
-            action = agent.act(state)
+            action = agent.act(agent_state)
             next_state, reward, done, _, _ = env.step(action)
             reward = reward if not done else reward  # Need to figure this part out
-            agent.remember(state, action, reward, next_state, done)
-            state = next_state
+            agent.remember(agent_state, action, reward, next_state, done)
+            agent_state = next_state
             if done:
                 print("episode: {}/{}, score: {}, e: {:.2}"
                       .format(e, n_episodes-1, time, agent.epsilon))
             time += 1
             if time == 10:
                 done = True
-        break
         if len(agent.memory) > batch_size:
             agent.train(batch_size)
     # if e % 50 == 0:

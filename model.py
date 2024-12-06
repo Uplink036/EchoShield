@@ -30,7 +30,6 @@ class AudioObfuscationEnv(gym.Env):
         self._length_of_file = length_of_file
         # Load the first audio file
         self._load_audio_file(self.dataset[self.current_index])
-        self.state = self.audio_signal
         # Define the action and observation spaces
         self.action_space = spaces.Box(
             low=-1, high=1, shape=(self._length_of_file,), dtype=np.int16)
@@ -49,6 +48,11 @@ class AudioObfuscationEnv(gym.Env):
         self.sample_rate = wav_info["samplerate"]
         self.transcription = data["transcription"]
 
+        S_full, phase = librosa.magphase(
+            librosa.stft(self.audio_signal, n_fft=512))
+        self.magnitude = S_full
+        self.phase = phase
+
     def _noise_reward(self, modification, alpha=1.0):
         # Normalize modification relative to the maximum allowed range (2000)
         modification_normalized = modification / 2000  # Larger changes penalized more
@@ -62,16 +66,13 @@ class AudioObfuscationEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         # Apply the action (noise) to the audio
-
-        S_full, phase = librosa.magphase(
-            librosa.stft(self.audio_signal, n_fft=512))
         mask = action[:, None]
         mask = mask.astype(float)
         # mask = medfilt(mask, kernel_size=(1, 5))
-        S_obfuscated = mask * S_full
+        S_obfuscated = mask * self.magnitude
 
         # CONVERT BACK TO WAV
-        obfuscated_audio = librosa.istft(S_obfuscated * phase)
+        obfuscated_audio = librosa.istft(S_obfuscated * self.phase)
 
         # save to file for transcription
         write_waw("obfuscated_audio.wav", 44100, obfuscated_audio)
@@ -107,13 +108,13 @@ class AudioObfuscationEnv(gym.Env):
         info = {}  # Additional debugging info if needed
 
         # Send FFT signal
-        return S_obfuscated, reward, terminated, truncated, info
+        return action, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
         # Load the next audio file
         self.current_index = (self.current_index + 1) % len(self.dataset)
         self._load_audio_file(self.dataset[self.current_index])
-        return self.audio_signal
+        return self.magnitude
 
     def _calculate_similarity(self, original, predicted):
         if not isinstance(original, str) or not isinstance(predicted, str):
