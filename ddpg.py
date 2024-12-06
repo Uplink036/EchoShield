@@ -32,15 +32,15 @@ class DDPG:
         self.buffer
 
     def policy(self, state):
-            sampled_actions = keras.ops.squeeze(self.actor(state))
-            noise = self.noise.sample()
-            # Adding noise to action
-            sampled_actions = sampled_actions.numpy() + noise
+        sampled_actions = keras.ops.squeeze(self.actor(state))
+        noise = self.noise.sample()
+        # Adding noise to action
+        sampled_actions = sampled_actions.numpy() + noise
 
-            # We make sure action is within bounds
-            legal_action = np.clip(sampled_actions, -self.action_magnitude, self.action_magnitude)
+        # We make sure action is within bounds
+        legal_action = np.clip(sampled_actions, -self.action_magnitude, self.action_magnitude)
 
-            return np.array([np.squeeze(legal_action)])
+        return np.squeeze(legal_action)
     
     @tf.function
     def update(
