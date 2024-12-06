@@ -50,7 +50,7 @@ class AudioObfuscationEnv(gym.Env):
 
         S_full, phase = librosa.magphase(
             librosa.stft(self.audio_signal, n_fft=512))
-        self.magnitude = S_full
+        self.magnitude = np.array(S_full)
         self.phase = phase
 
     def _noise_reward(self, modification, alpha=1.0):
@@ -66,7 +66,7 @@ class AudioObfuscationEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         # Apply the action (noise) to the audio
-        mask = action[:, None]
+        mask = np.array(action).reshape(-1, 1)
         mask = mask.astype(float)
         # mask = medfilt(mask, kernel_size=(1, 5))
         S_obfuscated = mask * self.magnitude

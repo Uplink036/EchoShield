@@ -2,8 +2,10 @@ import os
 import whisper
 import torch
 import numpy as np
+import keras
 from dqn import DQNAgent, preprocess_input
 from model import AudioObfuscationEnv
+from ddpg import DDPG
 
 
 def getAudioData(folderPath):
@@ -22,34 +24,59 @@ def getASR():
     return asr_model
 
 
+
+# Based on rate `tau`, which is much less than one.
+def update_target(target, original, tau):
+    target_weights = target.get_weights()
+    original_weights = original.get_weights()
+
+    for i in range(len(target_weights)):
+        target_weights[i] = original_weights[i] * tau + target_weights[i] * (1 - tau)
+
+    target.set_weights(target_weights)
+
+
 if __name__ == "__main__":
+    ep_reward_list = []
+    avg_reward_list = []
+    total_episodes = 100
     dataset = getAudioData(
         "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/")
     audio_length = 257
     env = AudioObfuscationEnv(dataset, getASR(), audio_length)
-    agent = DQNAgent(audio_length, audio_length, action_magnitude=10)
+    agent = DDPG(audio_length, audio_length)
 
-    batch_size = 32
-    n_episodes = 100
+    for ep in range(total_episodes):
+        prev_state = env.reset()
+        prev_state = np.sum(prev_state, axis=1)
+        episodic_reward = 0
 
-    for e in range(n_episodes):
-        state = env.reset()
-        agent_state = preprocess_input(state)
-        done = False
-        time = 0
-        while not done:
-            action = agent.act(agent_state)
-            next_state, reward, done, _, _ = env.step(action)
-            reward = reward if not done else reward  # Need to figure this part out
-            agent.remember(agent_state, action, reward, next_state, done)
-            agent_state = next_state
-            if done:
-                print("episode: {}/{}, score: {}, e: {:.2}"
-                      .format(e, n_episodes-1, time, agent.epsilon))
-            time += 1
-            if time == 10:
-                done = True
-        if len(agent.memory) > batch_size:
-            agent.train(batch_size)
-    # if e % 50 == 0:
-    #     agent.save("weights_"+ "{:04d}".format(e) + ".hdf5")
+        while True:
+            tf_prev_state = keras.ops.expand_dims(
+                keras.ops.convert_to_tensor(prev_state), 0
+            )
+
+            action = agent.policy(tf_prev_state)
+            # Receive state and reward from environment.
+            state, reward, done, truncated, _ = env.step(action)
+
+            agent.buffer.record((prev_state, action, reward, state))
+            episodic_reward += reward
+
+            agent.learn()
+
+            update_target(agent.t_actor, agent.actor, agent.tau)
+            update_target(agent.t_critic, agent.critic, agent.tau)
+
+            # End this episode when `done` or `truncated` is True
+            if done or truncated:
+                break
+
+            prev_state = state
+
+        ep_reward_list.append(episodic_reward)
+
+        # Mean of last 40 episodes
+        avg_reward = np.mean(ep_reward_list[-40:])
+        print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
+        avg_reward_list.append(avg_reward)
