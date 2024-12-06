@@ -13,11 +13,13 @@ import pandas as pd
 import os
 from audio import get_wav_info, write_waw
 import matplotlib.pyplot as plt
+from fastdtw import fastdtw
 
 import numpy as np
 from scipy.signal import medfilt
 import librosa
 import scipy.fftpack as fft
+import scipy.spatial.distance as dist
 
 
 class AudioObfuscationEnv(gym.Env):
@@ -53,16 +55,27 @@ class AudioObfuscationEnv(gym.Env):
         self.magnitude = np.array(S_full)
         self.phase = phase
 
-    def _noise_reward(self, modification, alpha=1.0):
+    def _noise_reward(self, obfuscated_audio, alpha=1.0, max_dist=80000):
         # Normalize modification relative to the maximum allowed range (2000)
-        modification_normalized = modification / 2000  # Larger changes penalized more
-        mae = np.mean(modification_normalized)
+        if obfuscated_audio.shape[0] > self.audio_signal.shape[0]:
+            obfuscated_audio = obfuscated_audio[:self.audio_signal.shape]
+        elif obfuscated_audio.shape[0] < self.audio_signal.shape[0]:
+            obfuscated_audio = np.pad(obfuscated_audio, (0, self.audio_signal.shape[0] - obfuscated_audio.shape[0]))
+        
+        mfcc1 = librosa.feature.mfcc(y=obfuscated_audio, sr=self.sample_rate, n_mfcc=13)
+        mfcc2 = librosa.feature.mfcc(y=self.audio_signal, sr=self.sample_rate, n_mfcc=13)
 
-        noise_penalty = alpha * mae
-        reward = max(0, 1 - np.abs(noise_penalty))
-        print(f"noise_{reward=}")
+        # Use Dynamic Time Warping (DTW) for similarity
+        distance, _ = fastdtw(mfcc1.T, mfcc2.T, dist=dist.euclidean)
 
-        return reward
+        min_dist = 0  # Perfect similarity
+        similarity = 1 - (distance - min_dist) / (max_dist - min_dist)
+    
+        # Ensure similarity is bounded between 0 and 1
+        similarity = np.clip(similarity, 0, 1)*alpha
+        print(f"Similarity: {similarity}")
+        return similarity
+        
 
     def step(self, action: np.ndarray):
         # Apply the action (noise) to the audio
@@ -88,7 +101,7 @@ class AudioObfuscationEnv(gym.Env):
         transcription_similarity = self._calculate_similarity(
             actual_transcription, predicted_transcription)
 
-        audio_similarity = self._noise_reward(action, 0.5)
+        audio_similarity = self._noise_reward(obfuscated_audio, 0.5)
         # Lower similarity and smaller noise are better
         reward = 1-transcription_similarity+audio_similarity
         # Save metrics

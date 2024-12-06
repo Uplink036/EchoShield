@@ -44,13 +44,14 @@ if __name__ == "__main__":
         "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/")
     audio_length = 257
     env = AudioObfuscationEnv(dataset, getASR(), audio_length)
-    agent = DDPG(audio_length, audio_length)
+    agent = DDPG(audio_length, audio_length, 200)
 
     for ep in range(total_episodes):
         prev_state = env.reset()
         prev_state = np.sum(prev_state, axis=1)
         episodic_reward = 0
-
+        
+        loop = 0
         while True:
             tf_prev_state = keras.ops.expand_dims(
                 keras.ops.convert_to_tensor(prev_state), 0
@@ -69,9 +70,12 @@ if __name__ == "__main__":
             update_target(agent.t_critic, agent.critic, agent.tau)
 
             # End this episode when `done` or `truncated` is True
-            if done or truncated:
+            
+            loop += 1
+            if done or truncated or loop == 10:
+                agent.noise.reset()
                 break
-
+            
             prev_state = state
 
         ep_reward_list.append(episodic_reward)

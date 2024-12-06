@@ -22,7 +22,7 @@ class DDPG:
         self.critic_optimizer = keras.optimizers.Adam(self.critic_lr)
         self.actor_optimizer = keras.optimizers.Adam(self.action_lr)
 
-        self.noise = OUNoise(state_space)
+        self.noise = OUNoise(state_space, theta=0.015*action_magnitude, sigma=0.02*action_magnitude)
         self.buffer = Buffer(state_space, action_space)
 
         self.action_magnitude = action_magnitude
