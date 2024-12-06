@@ -1,1 +1,4 @@
-index,reward,transcription_sim,audio_sim
+index,reward,transcription_sim,audio_sim,epsilon
+0,1.05,0.85,0.90,0.4
+1,1.08,0.80,0.80,0.5
+2,1.20,0.70,0.90,0.6
