@@ -74,7 +74,7 @@ class DQNAgent:
 
         # Update Q-values for the chosen actions
         for i in range(batch_size):
-            q_values[i][actions[i]] = targets[i]
+            q_values[i][0] = targets[i]
 
         # Fit the model on the batch
         self.model.fit(states, q_values, batch_size=batch_size,
@@ -95,6 +95,16 @@ class DQNAgent:
             act_values = self.model.predict(state)[0]
         act_values = np.clip(act_values, low, high)
         return act_values.astype(np.float32)
+    
 
     def save(self, name):
         self.model.save_weights(name)
+
+def preprocess_input(magnitude):
+    """Takes a magnitude and sums it into a predefined amount of slices and returns those.
+
+    :param magnitude: A magnitude generated from stft of shape (x, t), where t is the amount of slices
+    """
+    return np.sum(magnitude, axis=1)
+
+
