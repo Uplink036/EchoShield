@@ -17,12 +17,13 @@ class DDPG:
         self.t_actor.set_weights(self.actor.get_weights())
         self.t_critic.set_weights(self.critic.get_weights())
 
-        self.critic_lr = 0.002
-        self.action_lr = 0.001
+        self.critic_lr = 0.03
+        self.action_lr = 0.01
         self.critic_optimizer = keras.optimizers.Adam(self.critic_lr)
         self.actor_optimizer = keras.optimizers.Adam(self.action_lr)
 
-        self.noise = OUNoise(state_space, theta=0.015*action_magnitude, sigma=0.02*action_magnitude)
+        self.noise = OUNoise(state_space, theta=0.015 *
+                             action_magnitude, sigma=0.02*action_magnitude)
         self.buffer = Buffer(state_space, action_space)
 
         self.action_magnitude = action_magnitude
@@ -38,10 +39,11 @@ class DDPG:
         sampled_actions = sampled_actions.numpy() + noise
 
         # We make sure action is within bounds
-        legal_action = np.clip(sampled_actions, -self.action_magnitude, self.action_magnitude)
+        legal_action = np.clip(
+            sampled_actions, -self.action_magnitude, self.action_magnitude)
 
         return np.squeeze(legal_action)
-    
+
     @tf.function
     def update(
         self,
@@ -57,10 +59,12 @@ class DDPG:
             y = reward_batch + self.gamma * self.t_critic(
                 [next_state_batch, target_actions], training=True
             )
-            critic_value = self.critic([state_batch, action_batch], training=True)
+            critic_value = self.critic(
+                [state_batch, action_batch], training=True)
             critic_loss = keras.ops.mean(keras.ops.square(y - critic_value))
 
-        critic_grad = tape.gradient(critic_loss, self.critic.trainable_variables)
+        critic_grad = tape.gradient(
+            critic_loss, self.critic.trainable_variables)
         self.critic_optimizer.apply_gradients(
             zip(critic_grad, self.t_critic.trainable_variables)
         )
@@ -79,20 +83,25 @@ class DDPG:
 
     def learn(self):
         # Get sampling range
-        record_range = min(self.buffer.buffer_counter, self.buffer.buffer_capacity)
+        record_range = min(self.buffer.buffer_counter,
+                           self.buffer.buffer_capacity)
         # Randomly sample indices
         batch_indices = np.random.choice(record_range, self.buffer.batch_size)
 
         # Convert to tensors
-        state_batch = keras.ops.convert_to_tensor(self.buffer.state_buffer[batch_indices])
-        action_batch = keras.ops.convert_to_tensor(self.buffer.action_buffer[batch_indices])
-        reward_batch = keras.ops.convert_to_tensor(self.buffer.reward_buffer[batch_indices])
+        state_batch = keras.ops.convert_to_tensor(
+            self.buffer.state_buffer[batch_indices])
+        action_batch = keras.ops.convert_to_tensor(
+            self.buffer.action_buffer[batch_indices])
+        reward_batch = keras.ops.convert_to_tensor(
+            self.buffer.reward_buffer[batch_indices])
         reward_batch = keras.ops.cast(reward_batch, dtype="float32")
         next_state_batch = keras.ops.convert_to_tensor(
             self.buffer.next_state_buffer[batch_indices]
         )
 
         self.update(state_batch, action_batch, reward_batch, next_state_batch)
+
 
 def get_actor(input_size, output_size, action_magnitude):
     # Initialize weights between -3e-3 and 3-e3
@@ -101,7 +110,8 @@ def get_actor(input_size, output_size, action_magnitude):
     inputs = layers.Input(shape=(input_size,))
     out = layers.Dense(256, activation="relu")(inputs)
     out = layers.Dense(256, activation="relu")(out)
-    outputs = layers.Dense(output_size, activation="relu", kernel_initializer=last_init)(out)
+    outputs = layers.Dense(output_size, activation="relu",
+                           kernel_initializer=last_init)(out)
 
     # Our upper bound is 2.0 for Pendulum.
     outputs = outputs * action_magnitude

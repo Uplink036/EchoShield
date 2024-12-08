@@ -24,14 +24,14 @@ def getASR():
     return asr_model
 
 
-
 # Based on rate `tau`, which is much less than one.
 def update_target(target, original, tau):
     target_weights = target.get_weights()
     original_weights = original.get_weights()
 
     for i in range(len(target_weights)):
-        target_weights[i] = original_weights[i] * tau + target_weights[i] * (1 - tau)
+        target_weights[i] = original_weights[i] * \
+            tau + target_weights[i] * (1 - tau)
 
     target.set_weights(target_weights)
 
@@ -44,13 +44,13 @@ if __name__ == "__main__":
         "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/")
     audio_length = 257
     env = AudioObfuscationEnv(dataset, getASR(), audio_length)
-    agent = DDPG(audio_length, audio_length, 200)
+    agent = DDPG(audio_length, audio_length, 1)
 
     for ep in range(total_episodes):
         prev_state = env.reset()
         prev_state = np.sum(prev_state, axis=1)
         episodic_reward = 0
-        
+
         loop = 0
         while True:
             tf_prev_state = keras.ops.expand_dims(
@@ -70,12 +70,12 @@ if __name__ == "__main__":
             update_target(agent.t_critic, agent.critic, agent.tau)
 
             # End this episode when `done` or `truncated` is True
-            
+
             loop += 1
             if done or truncated or loop == 10:
                 agent.noise.reset()
                 break
-            
+
             prev_state = state
 
         ep_reward_list.append(episodic_reward)

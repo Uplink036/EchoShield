@@ -41,7 +41,7 @@ class AudioObfuscationEnv(gym.Env):
         self._metrics_file = "metrics.csv"
 
         with open(self._metrics_file, "w") as f:
-            f.write("index,reward,transcription_sim,audio_sim\n")
+            f.write("epoch,reward,transcription_sim,audio_sim\n")
 
     def _load_audio_file(self, data: dict):
         wav_info = get_wav_info(data["audio_file"])
@@ -60,35 +60,39 @@ class AudioObfuscationEnv(gym.Env):
         if obfuscated_audio.shape[0] > self.audio_signal.shape[0]:
             obfuscated_audio = obfuscated_audio[:self.audio_signal.shape]
         elif obfuscated_audio.shape[0] < self.audio_signal.shape[0]:
-            obfuscated_audio = np.pad(obfuscated_audio, (0, self.audio_signal.shape[0] - obfuscated_audio.shape[0]))
-        
-        mfcc1 = librosa.feature.mfcc(y=obfuscated_audio, sr=self.sample_rate, n_mfcc=13)
-        mfcc2 = librosa.feature.mfcc(y=self.audio_signal, sr=self.sample_rate, n_mfcc=13)
+            obfuscated_audio = np.pad(
+                obfuscated_audio, (0, self.audio_signal.shape[0] - obfuscated_audio.shape[0]))
+
+        mfcc1 = librosa.feature.mfcc(
+            y=obfuscated_audio, sr=self.sample_rate, n_mfcc=13)
+        mfcc2 = librosa.feature.mfcc(
+            y=self.audio_signal, sr=self.sample_rate, n_mfcc=13)
 
         # Use Dynamic Time Warping (DTW) for similarity
         distance, _ = fastdtw(mfcc1.T, mfcc2.T, dist=dist.euclidean)
 
         min_dist = 0  # Perfect similarity
         similarity = 1 - (distance - min_dist) / (max_dist - min_dist)
-    
+
         # Ensure similarity is bounded between 0 and 1
+
+        write_waw("diff_audio.wav", 44100, obfuscated_audio-self.audio_signal)
         similarity = np.clip(similarity, 0, 1)*alpha
-        print(f"Similarity: {similarity}")
+        print(f"Audio Similarity: {similarity} \n")
         return similarity
-        
 
     def step(self, action: np.ndarray):
         # Apply the action (noise) to the audio
         mask = np.array(action).reshape(-1, 1)
         mask = mask.astype(float)
-        # mask = medfilt(mask, kernel_size=(1, 5))
-        S_obfuscated = mask * self.magnitude
+        S_obfuscated = mask + self.magnitude
 
         # CONVERT BACK TO WAV
         obfuscated_audio = librosa.istft(S_obfuscated * self.phase)
 
         # save to file for transcription
         write_waw("obfuscated_audio.wav", 44100, obfuscated_audio)
+
         # Get transcription from ASR model
         print("Transcription: ", self.transcription)
         predicted_transcription = transcribe(
@@ -101,9 +105,9 @@ class AudioObfuscationEnv(gym.Env):
         transcription_similarity = self._calculate_similarity(
             actual_transcription, predicted_transcription)
 
-        audio_similarity = self._noise_reward(obfuscated_audio, 0.5)
+        audio_similarity = self._noise_reward(obfuscated_audio, 1)
         # Lower similarity and smaller noise are better
-        reward = 1-transcription_similarity+audio_similarity
+        reward = audio_similarity - transcription_similarity
         # Save metrics
         with open(self._metrics_file, "a") as f:
             f.write(
