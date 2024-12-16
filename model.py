@@ -97,13 +97,13 @@ class AudioObfuscationEnv(gym.Env):
         transcription_similarity = self._calculate_similarity(
             actual_transcription, predicted_transcription)
 
-        audio_similarity = self._noise_reward(obfuscated_audio, 0.5)
+        audio_distance = self._noise_reward(obfuscated_audio, 0.5)
         # Lower similarity and smaller noise are better
-        reward = 1-transcription_similarity+audio_similarity
+        reward = -1*(transcription_similarity+0.1)*(audio_distance+1)
         # Save metrics
         with open(self._metrics_file, "a") as f:
             f.write(
-                f"{self.current_index},{reward},{transcription_similarity},{audio_similarity}\n")
+                f"{self.current_index},{reward},{transcription_similarity},{audio_distance}\n")
 
         # Define episode termination conditions
         # Single-step environment ends immediately
