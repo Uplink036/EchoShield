@@ -7,11 +7,11 @@ from gymnasium import spaces
 import whisper
 import torch
 import Levenshtein
-from whisper_functions import transcribe
+from audio.whisper_functions import transcribe
 import random
 import pandas as pd
 import os
-from audio import get_wav_info, write_waw
+from audio.audio import get_wav_info, write_waw
 import matplotlib.pyplot as plt
 from fastdtw import fastdtw
 

@@ -1,15 +1,13 @@
 import speech_recognition as sr
-import audio
-from whisper_functions import transcribe as transcribe_whisper
+import audio.audio as audio
 import Levenshtein
-import noisereduce as nr
 import whisper
 import torch
-import scipy.fftpack as fft
 import librosa
-from scipy.signal import medfilt
 import numpy as np
 import soundfile as sf
+from scipy.signal import medfilt
+from audio.whisper_functions import transcribe as transcribe_whisper
 
 
 class EchoShield:

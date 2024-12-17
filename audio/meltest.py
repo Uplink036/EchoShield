@@ -4,7 +4,7 @@ import librosa.display
 import matplotlib.pyplot as plt
 import soundfile as sf
 import whisper
-import whisper_functions as wf
+import audio.whisper_functions as wf
 
 # Step 1: Load and preprocess the audio
 # Replace with your file
