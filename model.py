@@ -55,26 +55,22 @@ class AudioObfuscationEnv(gym.Env):
         self.magnitude = np.array(S_full)
         self.phase = phase
 
-    def _noise_reward(self, obfuscated_audio, alpha=1.0, max_dist=80000):
-        # Normalize modification relative to the maximum allowed range (2000)
-        if obfuscated_audio.shape[0] > self.audio_signal.shape[0]:
-            obfuscated_audio = obfuscated_audio[:self.audio_signal.shape]
-        elif obfuscated_audio.shape[0] < self.audio_signal.shape[0]:
-            obfuscated_audio = np.pad(obfuscated_audio, (0, self.audio_signal.shape[0] - obfuscated_audio.shape[0]))
+    def _noise_reward(self, obfuscated_audio, alpha=1.0):
         
-        mfcc1 = librosa.feature.mfcc(y=obfuscated_audio, sr=self.sample_rate, n_mfcc=13)
-        mfcc2 = librosa.feature.mfcc(y=self.audio_signal, sr=self.sample_rate, n_mfcc=13)
+        mfcc1 = librosa.feature.mfcc(y=self.audio_signal, sr=self.sample_rate, n_mfcc=13)
+        mfcc2 = librosa.feature.mfcc(y=obfuscated_audio, sr=self.sample_rate, n_mfcc=13)
 
+        min_frames = min(mfcc1.shape[1], mfcc2.shape[1])
+        mfcc_clean = mfcc1[:, :min_frames]
+        mfcc_noisy = mfcc2[:, :min_frames]
         # Use Dynamic Time Warping (DTW) for similarity
-        distance, _ = fastdtw(mfcc1.T, mfcc2.T, dist=dist.euclidean)
+        distances = np.linalg.norm(mfcc_clean - mfcc_noisy, axis=0)
 
-        min_dist = 0  # Perfect similarity
-        similarity = 1 - (distance - min_dist) / (max_dist - min_dist)
+        # Average distance across all frames
+        average_distance = np.mean(distances)*alpha
     
-        # Ensure similarity is bounded between 0 and 1
-        similarity = np.clip(similarity, 0, 1)*alpha
-        print(f"Similarity: {similarity}")
-        return similarity
+        print(f"Similarity multiplied by alpha: {average_distance}")
+        return average_distance
         
 
     def step(self, action: np.ndarray):
@@ -101,13 +97,13 @@ class AudioObfuscationEnv(gym.Env):
         transcription_similarity = self._calculate_similarity(
             actual_transcription, predicted_transcription)
 
-        audio_similarity = self._noise_reward(obfuscated_audio, 0.5)
+        audio_distance = self._noise_reward(obfuscated_audio, 0.5)
         # Lower similarity and smaller noise are better
-        reward = 1-transcription_similarity+audio_similarity
+        reward = -1*(transcription_similarity+0.1)*(audio_distance+1)
         # Save metrics
         with open(self._metrics_file, "a") as f:
             f.write(
-                f"{self.current_index},{reward},{transcription_similarity},{audio_similarity}\n")
+                f"{self.current_index},{reward},{transcription_similarity},{audio_distance}\n")
 
         # Define episode termination conditions
         # Single-step environment ends immediately
