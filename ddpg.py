@@ -4,7 +4,7 @@ import keras
 from keras import layers
 from noise import OUNoise
 from buffer import Buffer
-from model import AudioObfuscationEnv
+from audio_env import AudioObfuscationEnv
 
 
 class DDPG:

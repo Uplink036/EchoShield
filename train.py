@@ -4,7 +4,7 @@ import torch
 import numpy as np
 import keras
 from dqn import DQNAgent, preprocess_input
-from model import AudioObfuscationEnv
+from audio_env import AudioObfuscationEnv
 from ddpg import DDPG
 
 
