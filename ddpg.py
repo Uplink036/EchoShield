@@ -53,6 +53,7 @@ class DDPG:
 
         return np.squeeze(legal_action)
 
+
     @tf.function
     def update(
         self,
@@ -64,6 +65,7 @@ class DDPG:
         """
         Update our aactor and critic networks.
         """
+
         with tf.GradientTape() as tape:
             target_actions = self.t_actor(next_state_batch, training=True)
             y = reward_batch + self.gamma * self.t_critic(
