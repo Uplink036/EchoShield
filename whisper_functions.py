@@ -9,18 +9,19 @@ import whisper
 
 def transcribe(model: whisper, input_file: str, cuda: bool = False):
     """
-    Transcribe the given audio using the given Whisper model. \n
-    :param model: The Whisper model to use for transcription. \n
-        Can be loaded using whisper.load_model("turbo").to(device) \n
-    :param input_file: The path to the audio file to transcribe. \n
-    :param cuda: Whether to use CUDA for transcription. \n
+    Transcribe the given audio using the given Whisper model.
+
+    :param whisper model: The Whisper model to use for transcription. Can 
+    be loaded using whisper.load_model("turbo").to(device)
+    :param str input_file: The path to the audio file to transcribe.
+    :param bool cuda: Whether to use CUDA for transcription.
     """
 
     print("Transcribing: ", input_file)
     try:
         result = model.transcribe(
             input_file,
-            fp16=True if cuda else False,
+            fp16=cuda,
             language="en"
         )
     except Exception as e:
