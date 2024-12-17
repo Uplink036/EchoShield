@@ -42,6 +42,7 @@ class DDPG:
 
         return np.squeeze(legal_action)
     
+
     @tf.function
     def update(
         self,
@@ -50,6 +51,13 @@ class DDPG:
         reward_batch,
         next_state_batch,
     ):
+        """
+        # Eager execution is turned on by default in TensorFlow 2. Decorating with tf.function allows
+        # TensorFlow to build a static graph out of the logic and computations in our function.
+        # This provides a large speed up for blocks of code that contain many small TensorFlow operations such as this one.
+
+        # We compute the loss and update parameters
+        """
         # Training and updating Actor & Critic networks.
         # See Pseudo Code.
         with tf.GradientTape() as tape:
