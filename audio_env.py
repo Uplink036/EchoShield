@@ -22,21 +22,22 @@ class AudioObfuscationEnv(gym.Env):
         self.asr_model = asr_model  # Pretrained ASR model
         self.current_index = 0  # Track which file is being used
         self._length_of_file = length_of_file
-        self._load_audio_file(self.dataset[self.current_index])
+        self._load_audio_file(self.dataset[self.current_index]["audio_file"],
+                              self.dataset[self.current_index]["transcription"])
         self._metrics_file = "metrics.csv"
 
         with open(self._metrics_file, "w") as f:
             f.write("index,reward,transcription_sim,audio_sim\n")
 
-    def _load_audio_file(self, data: dict):
+    def _load_audio_file(self, filepath: str, transcription):
         """
         Load an audio file into the memory.
         """
-        wav_info = get_wav_info(data["audio_file"])
+        wav_info = get_wav_info(filepath)
         # Go to FFT
         self.audio_signal = wav_info["data"]
         self.sample_rate = wav_info["samplerate"]
-        self.transcription = data["transcription"]
+        self.transcription = transcription
 
         s_full, phase = librosa.magphase(
             librosa.stft(self.audio_signal, n_fft=512))
@@ -119,7 +120,8 @@ class AudioObfuscationEnv(gym.Env):
         Load the next audio file
         """
         self.current_index = (self.current_index + 1) % len(self.dataset)
-        self._load_audio_file(self.dataset[self.current_index])
+        self._load_audio_file(self.dataset[self.current_index]["audio_file"],
+                              self.dataset[self.current_index]["transcription"])
         return self.magnitude
 
     def _calculate_similarity(self, original, predicted):
