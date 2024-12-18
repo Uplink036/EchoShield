@@ -9,8 +9,8 @@ import numpy as np
 import gymnasium as gym
 import scipy.spatial.distance as dist
 from fastdtw import fastdtw
-from whisper_functions import transcribe
-from audio import get_wav_info, write_waw
+from audio.audio import get_wav_info, write_waw
+from audio.whisper_functions import transcribe
 
 
 class AudioObfuscationEnv(gym.Env):
