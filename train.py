@@ -7,8 +7,8 @@ import whisper
 import torch
 import numpy as np
 import keras
-from model import AudioObfuscationEnv
-from ddpg import DDPG
+from environment.model import AudioObfuscationEnv
+from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
 TOTAL_EPISODES = 100

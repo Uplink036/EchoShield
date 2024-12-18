@@ -7,7 +7,7 @@ import tensorflow as tf
 import numpy as np
 import keras
 from keras import layers
-from buffer import Buffer
+from models.buffer import Buffer
 
 class DDPG:
     """
