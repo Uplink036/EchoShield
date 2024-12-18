@@ -11,7 +11,7 @@ from environment.audio_env import AudioObfuscationEnv
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
-TOTAL_EPISODES = 100
+TOTAL_EPISODES = 10000
 AUDIO_LENGTH = 257
 
 def train():
