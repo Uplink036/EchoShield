@@ -7,7 +7,7 @@ import whisper
 import torch
 import numpy as np
 import keras
-from environment.model import AudioObfuscationEnv
+from environment.audio_env import AudioObfuscationEnv
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
