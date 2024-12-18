@@ -1,14 +1,26 @@
+"""
+Handle the creation of DDPG and the logic involved with it. 
+"""
+
+import copy
 import tensorflow as tf
 import numpy as np
 import keras
 from keras import layers
-from noise import OUNoise
-from buffer import Buffer
-from model import AudioObfuscationEnv
-
+from models.buffer import Buffer
 
 class DDPG:
-    def __init__(self, state_space, action_space, action_magnitude=100):
+    """
+    A DDPG Agent, using the actor critic method with OONoise.
+    """
+    def __init__(self, state_space: int, action_space: int , action_magnitude: float =100):
+        """
+        Initialize the DDPG agent with the following paramters.
+
+        :param int state_space: Input vector size
+        :param int action_space: Output vector size
+        :param float action_magnitude: output vector * action_magnitude
+        """
         self.actor = get_actor(state_space, action_space, action_magnitude)
         self.critic = get_critic(state_space, action_space)
 
@@ -29,19 +41,19 @@ class DDPG:
         self.std_dev = 0.2
         self.gamma = 0.99
         self.tau = 0.005
-        self.buffer
 
     def policy(self, state):
+        """
+        Get an act
+        """
         sampled_actions = keras.ops.squeeze(self.actor(state))
         noise = self.noise.sample()
-        # Adding noise to action
         sampled_actions = sampled_actions.numpy() + noise
-
-        # We make sure action is within bounds
         legal_action = np.clip(sampled_actions, -self.action_magnitude, self.action_magnitude)
 
         return np.squeeze(legal_action)
-    
+
+
     @tf.function
     def update(
         self,
@@ -50,8 +62,10 @@ class DDPG:
         reward_batch,
         next_state_batch,
     ):
-        # Training and updating Actor & Critic networks.
-        # See Pseudo Code.
+        """
+        Update our aactor and critic networks.
+        """
+
         with tf.GradientTape() as tape:
             target_actions = self.t_actor(next_state_batch, training=True)
             y = reward_batch + self.gamma * self.t_critic(
@@ -78,9 +92,10 @@ class DDPG:
         )
 
     def learn(self):
-        # Get sampling range
+        """
+        Learn from our previous encounter
+        """
         record_range = min(self.buffer.buffer_counter, self.buffer.buffer_capacity)
-        # Randomly sample indices
         batch_indices = np.random.choice(record_range, self.buffer.batch_size)
 
         # Convert to tensors
@@ -95,6 +110,9 @@ class DDPG:
         self.update(state_batch, action_batch, reward_batch, next_state_batch)
 
 def get_actor(input_size, output_size, action_magnitude):
+    """
+    Get a actor model
+    """
     # Initialize weights between -3e-3 and 3-e3
     last_init = keras.initializers.RandomUniform(minval=-0.003, maxval=0.003)
 
@@ -108,8 +126,10 @@ def get_actor(input_size, output_size, action_magnitude):
     model = keras.Model(inputs, outputs)
     return model
 
-
 def get_critic(input_size, output_size):
+    """
+    Get a critic model
+    """
     # State as input
     state_input = layers.Input(shape=(input_size,))
     state_out = layers.Dense(16, activation="relu")(state_input)
@@ -130,3 +150,25 @@ def get_critic(input_size, output_size):
     model = keras.Model([state_input, action_input], outputs)
 
     return model
+
+class OUNoise:
+    """Ornstein-Uhlenbeck process."""
+
+    def __init__(self, size, mu=0., theta=0.15, sigma=0.2):
+        """Initialize parameters and noise process."""
+        self.mu = mu * np.ones(size)
+        self.theta = theta
+        self.sigma = sigma
+        self.state = 0
+        self.reset()
+
+    def reset(self):
+        """Reset the internal state (= noise) to mean (mu)."""
+        self.state = copy.copy(self.mu)
+
+    def sample(self):
+        """Update internal state and return it as a noise sample."""
+        x = self.state
+        dx = self.theta * (self.mu - x) + self.sigma * np.array([np.random.randn() for i in range(len(x))])
+        self.state = x + dx
+        return self.state

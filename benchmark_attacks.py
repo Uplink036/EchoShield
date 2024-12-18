@@ -3,8 +3,8 @@ import librosa
 import os
 import torch
 import whisper
-from whisper_functions import transcribe
-from model import AudioObfuscationEnv
+from audio.whisper_functions import transcribe
+from environment.audio_env import AudioObfuscationEnv
 import soundfile as sf
 
 def random_noise_attack(epsilon, data):
