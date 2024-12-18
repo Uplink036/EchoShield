@@ -73,8 +73,10 @@ def empty_attack(data):
 
 
 def append_to_csv(file, index, attack, similarity, audio_distance):
+    success_threshold = 0.85
+    success = 1 if similarity <= success_threshold else 0
     with open(file, "a") as f:
-        f.write(f"{index},{attack},{similarity},{audio_distance}\n")
+        f.write(f"{index},{attack},{similarity},{audio_distance},{success}\n")
 
 
 def calculate_measurements(attack, filepath, env, sr, asr_model, original_transcription):
@@ -99,7 +101,7 @@ if __name__ == "__main__":
     asr_model = whisper.load_model("base").to(device)
 
     with open("metrics_compare.csv", "w") as f:
-        f.write("file_index,attack_type,similarity,audio_distance\n")
+        f.write("file_index,attack_type,similarity,audio_distance,success\n")
     # Create the vectorized environment
     env = AudioObfuscationEnv(dataset, asr_model, 0)
     metrics_file = "metrics_compare.csv"
@@ -124,7 +126,7 @@ if __name__ == "__main__":
 
         low = 20
         high = 20000
-        attack_bp = low_and_high_pass_attack(audio, sr)
+        attack_bp = amplify_dolphin_attack(audio, sr)
 
         order = 100
         attack_fir = fir_filter_attack(audio, order)
@@ -139,11 +141,11 @@ if __name__ == "__main__":
         attack_fir_path = "attack_fir.wav"
         attack_empty_path = "attack_empty.wav"
 
-        similarity_rn, audio_distance_rn = calculate_measurements(
+        similarity_rn, audio_distance_rn,  = calculate_measurements(
             attack_rn, folder+attack_rn_path, env, sr, asr_model, original_transcription)
-        similarity_fn, audio_distance_fn = calculate_measurements(
+        similarity_fn, audio_distance_fn,  = calculate_measurements(
             attack_fn, folder+attack_fn_path, env, sr, asr_model, original_transcription)
-        similarity_mn, audio_distance_mn = calculate_measurements(
+        similarity_mn, audio_distance_mn,  = calculate_measurements(
             attack_mn, folder+attack_mn_path, env, sr, asr_model, original_transcription)
         similarity_bp, audio_distance_bp = calculate_measurements(
             attack_bp, folder+attack_bp_path, env, sr, asr_model, original_transcription)
