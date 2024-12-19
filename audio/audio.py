@@ -91,7 +91,7 @@ def make_test_attack(audio, low, high):
     :param high: A float noting the highest value
     """
     size = audio["length"]
-    return np.random.randint(low=low, high=high, size=size, dtype=np.int16)
+    return np.random.uniform(low=low, high=high, size=size)
 
 
 if __name__ == "__main__":

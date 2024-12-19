@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/workspaces/EchoShield')
+
 import speech_recognition as sr
 import audio.audio as audio
 import Levenshtein
@@ -8,19 +11,40 @@ import numpy as np
 import soundfile as sf
 from scipy.signal import medfilt
 from audio.whisper_functions import transcribe as transcribe_whisper
+from scipy.signal import butter, lfilter
+import sklearn
+import pandas as pd
+import keras
+from keras.models import Sequential
+from keras.layers import Dense, Input
+import tensorflow as tf
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.preprocessing import MinMaxScaler
 
 
 class EchoShield:
-    def __init__(self, whisper_model, threshold=0.8):
+    def __init__(self, whisper_model, threshold=0.8, n_input_layers=8):
         self.whisper_model = whisper_model
         self.google_model = sr.Recognizer()
+        self.model = self._init_binary_classifier(n_input_layers)
+        
 
+    def _init_binary_classifier(self, n_input_layers):
+        """
+        Initializes a binary classifier
+        """
+        input_layers = n_input_layers
+        model = Sequential()
+        model.add(Input(shape=(input_layers,)))
+        model.add(Dense(8, activation='relu'))
+        model.add(Dense(1, activation='sigmoid'))
+
+        return model
     def _transcribe_google(self, input_file):
         """
-        Transcribes an audio file using a model
+        Transcribes an audio file using a google model
 
-        :param model: The model to use for transcription \n
-        :param input_file: The path to the audio file \n
+        :param input_file: The path to the audio file 
         """
 
         with sr.AudioFile(input_file) as source:
@@ -55,6 +79,23 @@ class EchoShield:
             return False
         return True
 
+    def train_binary_classifier(self, model, data):
+        """
+        Trains a binary classifier to detect if the audio is obfuscated or not
+
+        :param model: The model to train \n
+        :param data: The data to train the model on \n
+        """
+        model.compile(loss='binary_crossentropy',
+                      optimizer='adam', metrics=['accuracy'])
+
+        X = data["data"]
+        y = data["labels"]
+
+        model.fit(X, y, epochs=150, batch_size=10)
+
+        return model
+
     def reduce_noise(self, audio_file):
         """
         Reduces the noise in an audio file
@@ -77,6 +118,17 @@ class EchoShield:
 
         return reduced_audio, sr
 
+    def band_pass_filter(self, data, low_cut, high_cut):
+        """
+        Applies a band pass filter to the audio data
+
+        :param data: The audio data \n
+        :param low_cut: The low cut frequency \n
+        :param high_cut: The high cut frequency \n
+        """
+        b, a = butter(4, [low_cut, high_cut], btype='band')
+        return lfilter(b, a, data)
+
 
 if __name__ == "__main__":
     # Load the audio file
@@ -86,7 +138,7 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     whisper_model = whisper.load_model("base").to(device)
 
-    attack = audio.make_test_attack(data, -5000, 5000)
+    attack = audio.make_test_attack(data, -0.1, 0.1)
     print("Attack: ", attack)
 
     obfuscated_audio = data["data"] + attack
