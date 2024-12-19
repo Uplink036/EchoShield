@@ -7,6 +7,9 @@ import whisper
 import torch
 import numpy as np
 import keras
+import librosa
+from audio.audio import write_waw
+from audio.whisper_functions import transcribe
 from environment.audio_env import AudioObfuscationEnv
 from models.ddpg import DDPG
 
@@ -19,8 +22,38 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
     """
     A subclass to overide critical steps for MEL spectogram part.
     """
-    def step(self, action):
-        return super().step(action)
+    def step(self, action, sr=41_000):
+        n_fft = action[0]  # FFT window size
+        hop_length = 1  # Hop length
+        n_mels = action[1]  # Number of Mel bands
+        mel_spec = librosa.feature.melspectrogram(
+            y=self.audio_signal, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
+        
+        obfuscated_audio = librosa.feature.inverse.mel_to_audio(
+            mel_spec, sr=sr, n_fft=n_fft, hop_length=hop_length, n_iter=32
+            )
+        write_waw("obfuscated_audio.wav", sr, obfuscated_audio)
+        predicted_transcription = transcribe(
+            model=self.asr_model, input_file="obfuscated_audio.wav", cuda=False)
+        with open(self.transcription, "r") as f:
+            actual_transcription = f.read().replace("\n", "")
+
+        transcription_similarity = self._calculate_similarity(
+        actual_transcription, predicted_transcription)
+
+        audio_similarity = self._noise_reward(obfuscated_audio, 0.5)
+        reward = 1-transcription_similarity+audio_similarity
+        # Save metrics
+        with open(self._metrics_file, "a") as f:
+            f.write(
+                f"{self.current_index},{reward},{transcription_similarity},{audio_similarity}\n")
+
+        terminated = transcription_similarity < 0.85
+        truncated = False
+        info = {}
+
+        # Send FFT signal
+        return action, reward, terminated, truncated, info
 
 
 
