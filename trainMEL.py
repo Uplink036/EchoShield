@@ -16,7 +16,7 @@ from models.ddpg import DDPG
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
 TOTAL_EPISODES = 100
 AUDIO_LENGTH = 257
-OUTPUT_OPTIONS = 3
+OUTPUT_OPTIONS = 2
 
 class MelAudioObfuscationEnv(AudioObfuscationEnv):
     """
@@ -25,7 +25,7 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
     def step(self, action, sr=41_000):
         n_fft = action[0]  # FFT window size
         hop_length = 1  # Hop length
-        n_mels = action[1]  # Number of Mel bands
+        n_mels = action[1] // 8 # Number of Mel bands
         mel_spec = librosa.feature.melspectrogram(
             y=self.audio_signal, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
         
@@ -52,10 +52,13 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
         truncated = False
         info = {}
 
-        # Send FFT signal
-        return action, reward, terminated, truncated, info
+        s_full, _ = librosa.magphase(
+            librosa.stft(obfuscated_audio, n_fft=512))
+        magnitude = np.array(s_full)
+        next_state = np.sum(magnitude, axis=1)/magnitude.shape[1]
+        return next_state, reward, terminated, truncated, info
 
-
+ACTION_MAGNITUDE = 1_000
 
 def train():
     """
@@ -65,7 +68,7 @@ def train():
     avg_reward_list = []
 
     env = MelAudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
-    agent = DDPG(AUDIO_LENGTH, OUTPUT_OPTIONS, 2)
+    agent = DDPG(AUDIO_LENGTH, OUTPUT_OPTIONS, ACTION_MAGNITUDE)
 
     for ep in range(TOTAL_EPISODES):
         prev_state = env.reset()
@@ -79,6 +82,7 @@ def train():
             )
 
             action = agent.policy(tf_prev_state)
+            action = action.astype(int) + ACTION_MAGNITUDE + 1
             state, reward, done, truncated, _ = env.step(action)
 
             agent.buffer.record((prev_state, action, reward, state))
