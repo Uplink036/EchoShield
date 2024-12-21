@@ -24,8 +24,11 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
     """
     def step(self, action, sr=41_000):
         n_fft = action[0]  # FFT window size
-        hop_length = 1  # Hop length
-        n_mels = action[1] // 8 # Number of Mel bands
+        hop_length = 16  # Hop length
+        n_mels = max(action[1] // 8, 64) # Number of Mel bands
+        if (n_mels > n_fft):
+            n_fft = n_mels
+
         mel_spec = librosa.feature.melspectrogram(
             y=self.audio_signal, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
         
@@ -58,7 +61,7 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
         next_state = np.sum(magnitude, axis=1)/magnitude.shape[1]
         return next_state, reward, terminated, truncated, info
 
-ACTION_MAGNITUDE = 1_000
+ACTION_MAGNITUDE = 500
 
 def train():
     """
