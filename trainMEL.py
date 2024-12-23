@@ -14,6 +14,7 @@ from environment.audio_env import AudioObfuscationEnv
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
+FIXED_RUNS = 10
 TOTAL_EPISODES = 100
 AUDIO_LENGTH = 257
 OUTPUT_OPTIONS = 2
@@ -96,7 +97,7 @@ def train():
             update_target(agent.t_critic, agent.critic, agent.tau)
 
             loop += 1
-            if done or truncated or loop == 10:
+            if loop == FIXED_RUNS:
                 agent.noise.reset()
                 break
 
