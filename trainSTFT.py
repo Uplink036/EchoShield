@@ -13,7 +13,7 @@ from models.ddpg import DDPG
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
 TOTAL_EPISODES = 10000
 AUDIO_LENGTH = 257
-FIXED_RUNS = 10
+RUNS_PER_EPISODE = 10
 
 def train():
     """
@@ -47,7 +47,7 @@ def train():
             update_target(agent.t_critic, agent.critic, agent.tau)
 
             loop += 1
-            if loop == FIXED_RUNS:
+            if loop == RUNS_PER_EPISODE:
                 agent.noise.reset()
                 break
 
