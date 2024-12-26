@@ -31,7 +31,7 @@ def train():
         episodic_reward = 0
         loop = 0
 
-        while True:
+        while loop < RUNS_PER_EPISODE:
             tf_prev_state = keras.ops.expand_dims(
                 keras.ops.convert_to_tensor(prev_state), 0
             )
@@ -46,12 +46,10 @@ def train():
             update_target(agent.t_actor, agent.actor, agent.tau)
             update_target(agent.t_critic, agent.critic, agent.tau)
 
-            loop += 1
-            if loop == RUNS_PER_EPISODE:
-                agent.noise.reset()
-                break
-
             prev_state = state
+            loop += 1
+
+        agent.noise.reset()
         ep_reward_list.append(episodic_reward)
 
         avg_reward = np.mean(ep_reward_list[-40:])
