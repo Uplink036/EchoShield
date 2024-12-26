@@ -14,10 +14,53 @@ from environment.audio_env import AudioObfuscationEnv
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
-FIXED_RUNS = 10
+RUNS_PER_EPISODE = 10
 TOTAL_EPISODES = 100
 AUDIO_LENGTH = 257
 OUTPUT_OPTIONS = 2
+ACTION_MAGNITUDE = 500
+
+def train():
+    """
+    Trains a DDPG Agent with environment AudioObfuscationEnv
+    """
+    ep_reward_list = []
+    avg_reward_list = []
+
+    env = MelAudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
+    agent = DDPG(AUDIO_LENGTH, OUTPUT_OPTIONS, ACTION_MAGNITUDE)
+
+    for ep in range(TOTAL_EPISODES):
+        prev_state = env.reset()
+        prev_state = np.sum(prev_state, axis=1)/prev_state.shape[1]
+        episodic_reward = 0
+        loop = 0
+
+        while loop < RUNS_PER_EPISODE:
+            tf_prev_state = keras.ops.expand_dims(
+                keras.ops.convert_to_tensor(prev_state), 0
+            )
+
+            action = agent.policy(tf_prev_state)
+            action = action.astype(int) + ACTION_MAGNITUDE + 1
+            state, reward, done, truncated, _ = env.step(action)
+
+            agent.buffer.record((prev_state, action, reward, state))
+            episodic_reward += reward
+            agent.learn()
+
+            update_target(agent.t_actor, agent.actor, agent.tau)
+            update_target(agent.t_critic, agent.critic, agent.tau)
+
+            loop += 1
+            prev_state = state
+        
+        agent.noise.reset()
+        ep_reward_list.append(episodic_reward)
+
+        avg_reward = np.mean(ep_reward_list[-40:])
+        print(f"Episode * {ep} * Avg Reward is ==> {avg_reward}")
+        avg_reward_list.append(avg_reward)
 
 class MelAudioObfuscationEnv(AudioObfuscationEnv):
     """
@@ -61,53 +104,7 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
         magnitude = np.array(s_full)
         next_state = np.sum(magnitude, axis=1)/magnitude.shape[1]
         return next_state, reward, terminated, truncated, info
-
-ACTION_MAGNITUDE = 500
-
-def train():
-    """
-    Trains a DDPG Agent with environment AudioObfuscationEnv
-    """
-    ep_reward_list = []
-    avg_reward_list = []
-
-    env = MelAudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
-    agent = DDPG(AUDIO_LENGTH, OUTPUT_OPTIONS, ACTION_MAGNITUDE)
-
-    for ep in range(TOTAL_EPISODES):
-        prev_state = env.reset()
-        prev_state = np.sum(prev_state, axis=1)/prev_state.shape[1]
-        episodic_reward = 0
-        loop = 0
-
-        while True:
-            tf_prev_state = keras.ops.expand_dims(
-                keras.ops.convert_to_tensor(prev_state), 0
-            )
-
-            action = agent.policy(tf_prev_state)
-            action = action.astype(int) + ACTION_MAGNITUDE + 1
-            state, reward, done, truncated, _ = env.step(action)
-
-            agent.buffer.record((prev_state, action, reward, state))
-            episodic_reward += reward
-            agent.learn()
-
-            update_target(agent.t_actor, agent.actor, agent.tau)
-            update_target(agent.t_critic, agent.critic, agent.tau)
-
-            loop += 1
-            if loop == FIXED_RUNS:
-                agent.noise.reset()
-                break
-
-            prev_state = state
-        ep_reward_list.append(episodic_reward)
-
-        avg_reward = np.mean(ep_reward_list[-40:])
-        print(f"Episode * {ep} * Avg Reward is ==> {avg_reward}")
-        avg_reward_list.append(avg_reward)
-
+    
 def get_audio_data(folder_path):
     """
     Given a path, find all files in that path that ends with ".waw" and returns them.
