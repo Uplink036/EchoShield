@@ -7,7 +7,7 @@ import whisper
 import torch
 import numpy as np
 import keras
-from environment.audio_env import AudioObfuscationEnv
+from environment.stft_env import STFTAudioObfuscationEnv
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
@@ -22,7 +22,7 @@ def train():
     ep_reward_list = []
     avg_reward_list = []
 
-    env = AudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
+    env = STFTAudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
     agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 2)
 
     for ep in range(TOTAL_EPISODES):
