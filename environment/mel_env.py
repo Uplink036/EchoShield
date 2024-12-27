@@ -1,6 +1,6 @@
 import numpy as np
 import librosa
-from audio_env import AudioObfuscationEnv
+from environment.audio_env import AudioObfuscationEnv
 from audio.audio import write_waw
 from audio.whisper_functions import transcribe
 
