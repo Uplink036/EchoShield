@@ -53,7 +53,6 @@ class DDPG:
 
         return np.squeeze(legal_action)
 
-
     @tf.function
     def update(
         self,
@@ -63,7 +62,7 @@ class DDPG:
         next_state_batch,
     ):
         """
-        Update our aactor and critic networks.
+        Update our actor and critic networks.
         """
 
         with tf.GradientTape() as tape:
@@ -126,45 +125,53 @@ class DDPG:
 
 def get_actor(input_size, output_size, action_magnitude):
     """
-    Get a actor model
+    Get an actor model with additional layers.
     """
-    # Initialize weights between -3e-3 and 3-e3
     last_init = keras.initializers.RandomUniform(minval=-0.003, maxval=0.003)
 
     inputs = layers.Input(shape=(input_size,))
-    out = layers.Dense(256, activation="relu")(inputs)
-    out = layers.Dense(256, activation="relu")(out)
-    outputs = layers.Dense(output_size, activation="relu", kernel_initializer=last_init)(out)
+    x = layers.Dense(512, activation="relu")(inputs)  # First hidden layer
+    x = layers.Dense(512, activation="relu")(x)
+    x = layers.Dense(1024, activation="relu")(x)        
+    x = layers.Dense(512, activation="relu")(x)
+    x = layers.Dense(256, activation="relu")(x)       
+    outputs = layers.Dense(output_size, activation="tanh",
+                           kernel_initializer=last_init)(x)
 
-    # Our upper bound is 2.0 for Pendulum.
+    # Scale outputs to the desired action magnitude
     outputs = outputs * action_magnitude
     model = keras.Model(inputs, outputs)
     return model
 
+
 def get_critic(input_size, output_size):
     """
-    Get a critic model
+    Get a critic model with additional layers.
     """
     # State as input
     state_input = layers.Input(shape=(input_size,))
-    state_out = layers.Dense(16, activation="relu")(state_input)
-    state_out = layers.Dense(32, activation="relu")(state_out)
+    state_out = layers.Dense(64, activation="relu")(
+        state_input)  # First state-specific layer
+    state_out = layers.Dense(128, activation="relu")(
+        state_out)   # Second state-specific layer
 
     # Action as input
     action_input = layers.Input(shape=(output_size,))
-    action_out = layers.Dense(output_size, activation="relu")(action_input)
+    action_out = layers.Dense(64, activation="relu")(
+        action_input)  # Action-specific layer
 
-    # Both are passed through separate layer before concatenating
+    # Concatenate state and action
     concat = layers.Concatenate()([state_out, action_out])
 
-    out = layers.Dense(256, activation="relu")(concat)
-    out = layers.Dense(256, activation="relu")(out)
-    outputs = layers.Dense(1)(out)
+    x = layers.Dense(512, activation="relu")(concat)  # First combined layer
+    x = layers.Dense(512, activation="relu")(x)       
+    x = layers.Dense(256, activation="relu")(x)       
+    # Single output for state-action value
+    outputs = layers.Dense(1)(x)
 
-    # Outputs single value for give state-action
     model = keras.Model([state_input, action_input], outputs)
-
     return model
+
 
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
@@ -184,6 +191,7 @@ class OUNoise:
     def sample(self):
         """Update internal state and return it as a noise sample."""
         x = self.state
-        dx = self.theta * (self.mu - x) + self.sigma * np.array([np.random.randn() for i in range(len(x))])
+        dx = self.theta * (self.mu - x) + self.sigma * \
+            np.array([np.random.randn() for i in range(len(x))])
         self.state = x + dx
         return self.state
