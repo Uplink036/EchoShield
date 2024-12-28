@@ -7,13 +7,13 @@ import whisper
 import torch
 import numpy as np
 import keras
-from environment.audio_env import AudioObfuscationEnv
+from environment.stft_env import STFTAudioObfuscationEnv
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
-TOTAL_EPISODES = 10000
+TOTAL_EPISODES = 100
 AUDIO_LENGTH = 257
-FIXED_RUNS = 10
+RUNS_PER_EPISODE = 10
 
 def train():
     """
@@ -22,7 +22,7 @@ def train():
     ep_reward_list = []
     avg_reward_list = []
 
-    env = AudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
+    env = STFTAudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
     agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 2)
 
     for ep in range(TOTAL_EPISODES):
@@ -31,7 +31,7 @@ def train():
         episodic_reward = 0
         loop = 0
 
-        while True:
+        while loop < RUNS_PER_EPISODE:
             tf_prev_state = keras.ops.expand_dims(
                 keras.ops.convert_to_tensor(prev_state), 0
             )
@@ -46,12 +46,10 @@ def train():
             update_target(agent.t_actor, agent.actor, agent.tau)
             update_target(agent.t_critic, agent.critic, agent.tau)
 
-            loop += 1
-            if loop == FIXED_RUNS:
-                agent.noise.reset()
-                break
-
             prev_state = state
+            loop += 1
+
+        agent.noise.reset()
         ep_reward_list.append(episodic_reward)
 
         avg_reward = np.mean(ep_reward_list[-40:])
