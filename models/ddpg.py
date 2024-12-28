@@ -108,6 +108,21 @@ class DDPG:
         )
 
         self.update(state_batch, action_batch, reward_batch, next_state_batch)
+    
+    def save(self, path):
+        """
+        Save the model to a path.
+        """
+        self.actor.save(path + "actor.keras")
+        self.critic.save(path + "critic.keras")
+    
+    def load(self, path):
+        """
+        Load the model from a path.
+        """
+        self.actor = keras.models.load_model(path + "actor.keras")
+        self.critic = keras.models.load_model(path + "critic.keras")
+
 
 def get_actor(input_size, output_size, action_magnitude):
     """

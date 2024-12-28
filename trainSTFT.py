@@ -14,6 +14,10 @@ WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+tx
 TOTAL_EPISODES = 100
 AUDIO_LENGTH = 257
 RUNS_PER_EPISODE = 10
+SAVE_TRAINED_MODEL = True
+LOAD_TRAINED_MODEL = False
+PATH = "stft_trained_model"
+
 
 def train():
     """
@@ -24,6 +28,8 @@ def train():
 
     env = STFTAudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
     agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 2)
+    if LOAD_TRAINED_MODEL:
+        agent.load(PATH)
 
     for ep in range(TOTAL_EPISODES):
         prev_state = env.reset()
@@ -56,6 +62,10 @@ def train():
         print(f"Episode * {ep} * Avg Reward is ==> {avg_reward}")
         avg_reward_list.append(avg_reward)
 
+    if SAVE_TRAINED_MODEL:
+        agent.save(PATH)
+
+
 def get_audio_data(folder_path):
     """
     Given a path, find all files in that path that ends with ".waw" and returns them.
@@ -78,7 +88,6 @@ def get_asr():
     return asr_model
 
 
-
 # Based on rate `tau`, which is much less than one.
 def update_target(target, original, tau):
     """
@@ -92,9 +101,11 @@ def update_target(target, original, tau):
     original_weights = original.get_weights()
 
     for index, target_weight in enumerate(target_weights):
-        target_weights[index] = original_weights[index] * tau + target_weight * (1 - tau)
+        target_weights[index] = original_weights[index] * \
+            tau + target_weight * (1 - tau)
 
     target.set_weights(target_weights)
+
 
 DATASET = get_audio_data(WAW_FILEPATH)
 if __name__ == "__main__":

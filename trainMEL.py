@@ -16,6 +16,9 @@ TOTAL_EPISODES = 100
 AUDIO_LENGTH = 257
 OUTPUT_OPTIONS = 2
 ACTION_MAGNITUDE = 500
+SAVE_TRAINED_MODEL = True
+LOAD_TRAINED_MODEL = False
+PATH = "mel_trained_model"
 
 def train():
     """
@@ -27,6 +30,8 @@ def train():
     env = MelAudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
     agent = DDPG(AUDIO_LENGTH, OUTPUT_OPTIONS, ACTION_MAGNITUDE)
 
+    if LOAD_TRAINED_MODEL:
+        agent.load(PATH)
     for ep in range(TOTAL_EPISODES):
         prev_state = env.reset()
         prev_state = np.sum(prev_state, axis=1)/prev_state.shape[1]
@@ -58,6 +63,9 @@ def train():
         avg_reward = np.mean(ep_reward_list[-40:])
         print(f"Episode * {ep} * Avg Reward is ==> {avg_reward}")
         avg_reward_list.append(avg_reward)
+    
+    if SAVE_TRAINED_MODEL:
+        agent.save(PATH)
     
 def get_audio_data(folder_path):
     """
@@ -101,3 +109,4 @@ def update_target(target, original, tau):
 DATASET = get_audio_data(WAW_FILEPATH)
 if __name__ == "__main__":
     train()
+
