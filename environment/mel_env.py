@@ -31,7 +31,7 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
             actual_transcription = f.read().replace("\n", "")
 
         transcription_similarity = self._calculate_similarity(
-        actual_transcription, predicted_transcription)
+        actual_transcription, predicted_transcription, alpha=4)
 
         audio_similarity = self._noise_reward(obfuscated_audio, 0.5)
         reward = 1-transcription_similarity+audio_similarity
@@ -49,3 +49,17 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
         magnitude = np.array(s_full)
         next_state = np.sum(magnitude, axis=1)/magnitude.shape[1]
         return next_state, reward, terminated, truncated, info
+
+    def perform_attack(self, action, audio, sr=41_000):
+        n_fft = action[0]
+        hop_length = 16
+        n_mels = max(action[1] // 8, 64)
+        if (n_mels > n_fft):
+            n_fft = n_mels
+        
+        mel_spec = librosa.feature.melspectrogram(
+            y=audio, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
+        obfuscated_audio = librosa.feature.inverse.mel_to_audio(
+            mel_spec, sr=sr, n_fft=n_fft, hop_length=hop_length, n_iter=32
+        )
+        return obfuscated_audio
