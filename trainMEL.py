@@ -7,7 +7,7 @@ import whisper
 import torch
 import numpy as np
 import keras
-from environment.mel_env import MelAudioObfuscationEnv
+from environment.mel_env import MelAudioObfuscationEnv, preprocess_input
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
@@ -28,8 +28,8 @@ def train():
     agent = DDPG(AUDIO_LENGTH, OUTPUT_OPTIONS, ACTION_MAGNITUDE)
 
     for ep in range(TOTAL_EPISODES):
-        prev_state = env.reset()
-        prev_state = np.sum(prev_state, axis=1)/prev_state.shape[1]
+        audio = env.reset()
+        prev_state = preprocess_input(audio, AUDIO_LENGTH-1)
         episodic_reward = 0
         loop = 0
 
