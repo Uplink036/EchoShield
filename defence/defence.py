@@ -8,7 +8,12 @@ import librosa
 import numpy as np
 import soundfile as sf
 from scipy.signal import medfilt
+import keras
+from math import ceil
 
+from scikeras.wrappers import KerasClassifier
+from sklearn.model_selection import cross_val_score, cross_validate
+from sklearn.model_selection import StratifiedKFold
 
 def get_audio_data(folder_path):
     """
@@ -27,6 +32,13 @@ class EchoShield:
         self.whisper_model = whisper_model
         self.google_model = sr.Recognizer()
         self.threshold = threshold
+        self.sr = 44_100
+        self.n_fft = 512
+        self.hop_length = 16
+        self.n_mels = 32
+        self.audio_length_s = 3
+        self.binary_classifer = self.init_binary_classifier()
+
 
     def _transcribe_whisper(self, input_file, cuda=False):
         """
@@ -47,7 +59,7 @@ class EchoShield:
             print("Error: ", e)
             return "Error" + str(e)
 
-        print("Transcription: ", result["text"])
+        print("Whisper Transcription: ", result["text"])
         return result["text"]
     
     def _transcribe_google(self, input_file):
@@ -60,7 +72,13 @@ class EchoShield:
 
         with sr.AudioFile(input_file) as source:
             audio = self.google_model.record(source)
-            return self.google_model.recognize_google(audio)
+            try:
+                result = self.google_model.recognize_google(audio, language="en-US")
+            except sr.UnknownValueError:
+                print("Google Speech Recognition could not understand the audio")
+                result = ""
+        print("Google Transcription: ", result)
+        return result
 
     def _compare_transcriptions(self, transcription1, transcription2, threshold):
         """
@@ -128,19 +146,88 @@ class EchoShield:
         tp, tn, fp, fn = 0, 0, 0, 0
 
         for clean, obfuscated in zip(clean_data, obfuscated_data):
-            clean_detected = detect_function(clean["audio_file"])
-            if not clean_detected:
-                tp += 1
-            else:
-                fn += 1
-
             obfuscated_detected = detect_function(obfuscated["audio_file"])
             if obfuscated_detected:
-                tn += 1
+                tp += 1 # Attack detected
             else:
-                fp += 1
+                fn += 1 # Attack Missed
+
+            clean_detected = detect_function(clean["audio_file"])
+            if not clean_detected:
+                tn += 1 # Clean detected
+            else:
+                fp += 1 # Cleaned labelled as attack
+
         
         return tp, tn, fp, fn
+
+    def convert_to_mel_spectrogram(self, audio_file):
+        """
+        Converts an audio file to a mel spectrogram
+
+        :param audio_file: The audio file to convert \n
+        """
+        data, sr = librosa.load(audio_file, sr=self.sr)
+
+        # Pad the audio file if it is too short
+        if len(data) < self.audio_length_s * sr:
+            data = np.pad(data, (0, self.audio_length_s*sr - len(data)))
+        else:
+            data = data[:self.audio_length_s * sr]
+        mel_spec = librosa.feature.melspectrogram(
+            y=data, sr=self.sr, n_fft=self.n_fft, hop_length=self.hop_length, n_mels=self.n_mels)
+        mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
+
+        return mel_spec_db
+
+    def init_binary_classifier(self):
+        """
+        Initializes a binary classifier to detect obfuscated audio files
+        """
+        dim1 = self.n_mels
+        dim2 = ceil(self.audio_length_s * self.sr / self.hop_length)
+        model = keras.Sequential()
+        model.add(keras.layers.Input(shape=(dim1, dim2)))
+        model.add(keras.layers.Flatten())
+        model.add(keras.layers.Dense(128, activation='relu'))
+        model.add(keras.layers.Dense(64, activation='relu'))
+        model.add(keras.layers.Dense(32, activation='relu'))
+        # Output shape should just be 1
+        model.add(keras.layers.Dense(1, activation='sigmoid'))
+
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[keras.metrics.BinaryAccuracy(), keras.metrics.F1Score()])
+
+        return model
+    
+    def train_binary_classifier_detector(self, clean_folder, obfuscated_folder):
+        """
+        Trains a binary classifier to detect obfuscated audio files
+
+        :param clean_folder: The folder containing clean audio files \n
+        :param obfuscated_folder: The folder containing obfuscated audio files \n
+        """
+        clean_data = get_audio_data(clean_folder)
+        obfuscated_data = get_audio_data(obfuscated_folder)
+
+        X = []
+        y = []
+
+        for clean, obfuscated in zip(clean_data, obfuscated_data):
+            X.append(clean["audio_file"])
+            y.append(0)
+
+            X.append(obfuscated["audio_file"])
+            y.append(1)
+        
+        # Change so that X is the mel spectrogram
+        X = np.array([self.convert_to_mel_spectrogram(f) for f in X])
+
+        estimator = KerasClassifier(model=self.binary_classifer, epochs=10, batch_size=10, verbose=1)
+        kfold = StratifiedKFold(n_splits=5, shuffle=True)
+        results = cross_validate(estimator, X, y, cv=kfold, verbose=1, scoring=['accuracy', 'f1'])
+
+        print("Accuracy: ", results['test_accuracy'].mean())
+        print("F1: ", results['test_f1'].mean())
 
 
 if __name__ == "__main__":
@@ -150,9 +237,11 @@ if __name__ == "__main__":
 
     echo_shield = EchoShield(whisper_model)
 
-    tp, tn, fp, fn = echo_shield.evaluate_defence("test_attacks/attack_empty/", "test_attacks/attack_bp/", echo_shield.detect_compare)
+    # tp, tn, fp, fn = echo_shield.evaluate_defence("test_attacks/attack_empty/", "test_attacks/attack_bp/", echo_shield.detect_compare)
     
-    print(f"True Positives: {tp}")
-    print(f"True Negatives: {tn}")
-    print(f"False Positives: {fp}")
-    print(f"False Negatives: {fn}")
+    # print(f"True Positives: {tp}")
+    # print(f"True Negatives: {tn}")
+    # print(f"False Positives: {fp}")
+    # print(f"False Negatives: {fn}")
+
+    echo_shield.train_binary_classifier_detector("test_attacks/attack_empty/", "test_attacks/attack_rn/")
