@@ -44,8 +44,15 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
         truncated = False
         info = {}
 
-        s_full, _ = librosa.magphase(
-            librosa.stft(obfuscated_audio, n_fft=512))
-        magnitude = np.array(s_full)
-        next_state = np.sum(magnitude, axis=1)/magnitude.shape[1]
+        next_state = preprocess_input(obfuscated_audio)
         return next_state, reward, terminated, truncated, info
+
+def preprocess_input(audio_signal, shape=256):
+    """
+    Given an audio signal, send back the expected model input
+    """
+    s_full, _ = librosa.magphase(
+        librosa.stft(audio_signal, n_fft=shape*2))
+    magnitude = np.array(s_full)
+    state = np.sum(magnitude, axis=1) / magnitude.shape[1]
+    return state
