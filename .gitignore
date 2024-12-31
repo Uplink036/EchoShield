@@ -2,6 +2,7 @@
 *.csv
 .DS_Store
 *.wav
+*.txt
 data/
 
 # Byte-compiled / optimized / DLL files

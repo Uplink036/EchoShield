@@ -8,6 +8,19 @@ from environment.audio_env import AudioObfuscationEnv
 import soundfile as sf
 import scipy.signal as signal
 
+FOLDER = "testing_data/"
+
+def get_audio_data(folder_path):
+    """
+    Given a path, find all files in that path that ends with ".waw" and returns them.
+    """
+    files = os.listdir(folder_path)
+    audio_files = [folder_path + f for f in files if f.endswith(".wav")]
+    transcriptions = [f.replace(".wav", ".txt") for f in audio_files]
+    dataset = [
+        {"audio_file": f, "transcription": t} for f, t in zip(audio_files, transcriptions)
+    ]
+    return dataset
 
 def random_noise_attack(epsilon, data):
     noise = np.random.uniform(-epsilon, epsilon, data.shape)
@@ -89,14 +102,9 @@ def calculate_measurements(attack, filepath, env, sr, asr_model, original_transc
 
 
 if __name__ == "__main__":
-    files = os.listdir(
-        "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)")
-    audio_files = [
-        "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/" + f for f in files if f.endswith(".wav")]
-    transcriptions = [f.replace(".wav", ".txt") for f in audio_files]
-    dataset = [
-        {"audio_file": f, "transcription": t} for f, t in zip(audio_files, transcriptions)
-    ]
+    if not os.path.exists(FOLDER):
+        exit("Test folder does not exist.")
+    dataset = get_audio_data(FOLDER)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     asr_model = whisper.load_model("base").to(device)
 
