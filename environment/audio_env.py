@@ -77,7 +77,7 @@ class AudioObfuscationEnv(gym.Env):
         self.current_index = (self.current_index + 1) % len(self.dataset)
         self._load_audio_file(self.dataset[self.current_index]["audio_file"],
                               self.dataset[self.current_index]["transcription"])
-        return self.magnitude
+        return self.audio_signal
 
     def _calculate_similarity(self, original, predicted):
         """
