@@ -157,7 +157,7 @@ def get_critic(input_size, output_size):
 
     # Action as input
     action_input = layers.Input(shape=(output_size,))
-    action_out = layers.Dense(64, activation="relu")(
+    action_out = layers.Dense(output_size, activation="relu")(
         action_input)  # Action-specific layer
 
     # Concatenate state and action

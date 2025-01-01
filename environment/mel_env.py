@@ -50,7 +50,7 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
         next_state = np.sum(magnitude, axis=1)/magnitude.shape[1]
         return next_state, reward, terminated, truncated, info
 
-    def perform_attack(self, action, audio, sr=41_000):
+    def perform_attack(self, action, audio, sr=44_100):
         n_fft = action[0]
         hop_length = 16
         n_mels = max(action[1] // 8, 64)

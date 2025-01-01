@@ -79,7 +79,7 @@ class AudioObfuscationEnv(gym.Env):
                               self.dataset[self.current_index]["transcription"])
         return self.magnitude
 
-    def _calculate_similarity(self, original, predicted, alpha=1.0):
+    def _calculate_similarity(self, original, predicted, alpha=2):
         """
         Given two sentences, caluclates how similiar they are and returns a number between 0-1.  
         """
