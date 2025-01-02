@@ -11,13 +11,15 @@ from environment.stft_env import STFTAudioObfuscationEnv, preprocess_input
 from models.ddpg import DDPG
 from data_splitting import train_test_split
 
-DATA_FOLDER = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
-TRAINING_FILEPATH = "training_data/"
-TESTING_FILEPATH = "testing_data/"
-RESHUFFLE = False
-TOTAL_EPISODES = 100
-AUDIO_LENGTH = 257
-RUNS_PER_EPISODE = 10
+DATA_FOLDER         = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
+TRAINING_FILEPATH   = "training_data/"
+TESTING_FILEPATH    = "testing_data/"
+RESHUFFLE           = False
+TOTAL_EPISODES      = 100
+AUDIO_LENGTH        = 257
+NUM_COMPONENTS      = 18
+ACTION_CHUNKS       = 4
+RUNS_PER_EPISODE    = 10
 
 def train(dataset):
     """
@@ -27,11 +29,11 @@ def train(dataset):
     avg_reward_list = []
 
     env = STFTAudioObfuscationEnv(dataset, get_asr(), AUDIO_LENGTH)
-    agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 2)
+    agent = DDPG(AUDIO_LENGTH*NUM_COMPONENTS, AUDIO_LENGTH*ACTION_CHUNKS, 2)
 
     for ep in range(TOTAL_EPISODES):
         audio = env.reset()
-        prev_state = preprocess_input(audio, AUDIO_LENGTH-1)
+        prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
         episodic_reward = 0
         loop = 0
 
@@ -41,6 +43,7 @@ def train(dataset):
             )
 
             action = agent.policy(tf_prev_state)
+            action = np.reshape(action, (AUDIO_LENGTH, ACTION_CHUNKS))
             state, reward, done, truncated, _ = env.step(action)
 
             agent.buffer.record((prev_state, action, reward, state))

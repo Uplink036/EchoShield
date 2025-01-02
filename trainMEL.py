@@ -11,29 +11,30 @@ from environment.mel_env import MelAudioObfuscationEnv, preprocess_input
 from models.ddpg import DDPG
 from data_splitting import train_test_split
 
-DATA_FOLDER = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
-TRAINING_FILEPATH = "training_data/"
-TESTING_FILEPATH = "testing_data/"
-RESHUFFLE = False
-RUNS_PER_EPISODE = 10
-TOTAL_EPISODES = 100
-AUDIO_LENGTH = 257
-OUTPUT_OPTIONS = 2
-ACTION_MAGNITUDE = 500
+DATA_FOLDER         = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
+TRAINING_FILEPATH   = "training_data/"
+TESTING_FILEPATH    = "testing_data/"
+RESHUFFLE           = False
+RUNS_PER_EPISODE    = 10
+TOTAL_EPISODES      = 100
+AUDIO_LENGTH        = 257
+NUM_COMPONENTS      = 18
+OUTPUT_OPTIONS      = 2
+ACTION_MAGNITUDE    = 500
 
-def train():
+def train(dataset):
     """
     Trains a DDPG Agent with environment AudioObfuscationEnv
     """
     ep_reward_list = []
     avg_reward_list = []
 
-    env = MelAudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
-    agent = DDPG(AUDIO_LENGTH, OUTPUT_OPTIONS, ACTION_MAGNITUDE)
+    env = MelAudioObfuscationEnv(dataset, get_asr(), AUDIO_LENGTH)
+    agent = DDPG(AUDIO_LENGTH*NUM_COMPONENTS, OUTPUT_OPTIONS, ACTION_MAGNITUDE)
 
     for ep in range(TOTAL_EPISODES):
         audio = env.reset()
-        prev_state = preprocess_input(audio, AUDIO_LENGTH-1)
+        prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
         episodic_reward = 0
         loop = 0
 
@@ -53,16 +54,16 @@ def train():
             update_target(agent.t_actor, agent.actor, agent.tau)
             update_target(agent.t_critic, agent.critic, agent.tau)
 
-            loop += 1
             prev_state = state
-        
+            loop += 1
+
         agent.noise.reset()
         ep_reward_list.append(episodic_reward)
 
         avg_reward = np.mean(ep_reward_list[-40:])
         print(f"Episode * {ep} * Avg Reward is ==> {avg_reward}")
         avg_reward_list.append(avg_reward)
-    
+
 def get_audio_data(folder_path):
     """
     Given a path, find all files in that path that ends with ".waw" and returns them.
