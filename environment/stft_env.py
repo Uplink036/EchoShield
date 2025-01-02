@@ -1,5 +1,6 @@
 import numpy as np
 import librosa
+from sklearn.decomposition import PCA
 from environment.audio_env import AudioObfuscationEnv
 from audio.audio import write_waw
 from audio.whisper_functions import transcribe
@@ -59,12 +60,14 @@ class STFTAudioObfuscationEnv(AudioObfuscationEnv):
         return NotImplementedError
     
 
-def preprocess_input(audio_signal, shape=256):
+def preprocess_input(audio_signal, shape=256, num_components=18):
     """
     Given an audio signal, send back the expected model input
     """
     s_full, _ = librosa.magphase(
-    librosa.stft(audio_signal, n_fft=shape*2))
+        librosa.stft(audio_signal, n_fft=shape*2))
     magnitude = np.array(s_full)
-    state = np.sum(magnitude, axis=1)/magnitude.shape[1]
-    return state
+    pca = PCA(n_components=num_components)
+    audio_pca = pca.fit_transform(magnitude)
+    flat_pca = audio_pca.flatten()
+    return flat_pca
