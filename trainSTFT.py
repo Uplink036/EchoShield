@@ -7,7 +7,7 @@ import whisper
 import torch
 import numpy as np
 import keras
-from environment.stft_env import STFTAudioObfuscationEnv
+from environment.stft_env import STFTAudioObfuscationEnv, preprocess_input
 from models.ddpg import DDPG
 from data_splitting import train_test_split
 
@@ -30,8 +30,8 @@ def train(dataset):
     agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 2)
 
     for ep in range(TOTAL_EPISODES):
-        prev_state = env.reset()
-        prev_state = np.sum(prev_state, axis=1)/prev_state.shape[1]
+        audio = env.reset()
+        prev_state = preprocess_input(audio, AUDIO_LENGTH-1)
         episodic_reward = 0
         loop = 0
 
