@@ -110,7 +110,6 @@ def update_target(target, original, tau):
 
     target.set_weights(target_weights)
 
-DATASET = get_audio_data(WAW_FILEPATH)
 if __name__ == "__main__":
     if not os.path.exists(TRAINING_FILEPATH) or RESHUFFLE:
         train_test_split(DATA_FOLDER, TRAINING_FILEPATH, TESTING_FILEPATH, 0.7)
