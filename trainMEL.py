@@ -21,6 +21,9 @@ AUDIO_LENGTH        = 257
 NUM_COMPONENTS      = 18
 OUTPUT_OPTIONS      = 2
 ACTION_MAGNITUDE    = 500
+SAVE_TRAINED_MODEL  = True
+LOAD_TRAINED_MODEL  = False
+PATH                = "mel_trained_model"
 
 def train(dataset):
     """
@@ -32,6 +35,8 @@ def train(dataset):
     env = MelAudioObfuscationEnv(dataset, get_asr(), AUDIO_LENGTH)
     agent = DDPG(AUDIO_LENGTH*NUM_COMPONENTS, OUTPUT_OPTIONS, ACTION_MAGNITUDE)
 
+    if LOAD_TRAINED_MODEL:
+        agent.load(PATH)
     for ep in range(TOTAL_EPISODES):
         audio = env.reset()
         prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
@@ -63,7 +68,10 @@ def train(dataset):
         avg_reward = np.mean(ep_reward_list[-40:])
         print(f"Episode * {ep} * Avg Reward is ==> {avg_reward}")
         avg_reward_list.append(avg_reward)
-
+    
+    if SAVE_TRAINED_MODEL:
+        agent.save(PATH)
+    
 def get_audio_data(folder_path):
     """
     Given a path, find all files in that path that ends with ".waw" and returns them.

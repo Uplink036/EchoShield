@@ -76,7 +76,7 @@ class AudioObfuscationEnv(gym.Env):
                               self.dataset[self.current_index]["transcription"])
         return self.audio_signal
 
-    def _calculate_similarity(self, original, predicted):
+    def _calculate_similarity(self, original, predicted, alpha=2):
         """
         Given two sentences, caluclates how similiar they are and returns a number between 0-1.  
         """
@@ -86,7 +86,7 @@ class AudioObfuscationEnv(gym.Env):
         print(f"Original: {original}, Predicted: {predicted}")
         original = original.lower().strip()
         predicted = predicted.lower().strip()
-        return Levenshtein.ratio(original, predicted)**2
+        return Levenshtein.ratio(original, predicted)**alpha
 
     def render(self, mode="human"):
         raise NotImplementedError

@@ -33,9 +33,9 @@ class STFTAudioObfuscationEnv(AudioObfuscationEnv):
             actual_transcription = f.read().replace("\n", "")
 
         transcription_similarity = self._calculate_similarity(
-            actual_transcription, predicted_transcription)
+            actual_transcription, predicted_transcription, alpha=4)
 
-        audio_distance = self._noise_reward(obfuscated_audio, 0.5)
+        audio_distance = self._noise_reward(obfuscated_audio, 1)
         # Lower similarity and smaller noise are better
         reward = -1*(transcription_similarity+0.1)*(audio_distance+1)
         with open(self._metrics_file, "a") as f:
@@ -56,6 +56,15 @@ class STFTAudioObfuscationEnv(AudioObfuscationEnv):
         return next_state, reward, terminated, truncated, info
 
     
+    def perform_attack(self, action, magnitude, phase, sr=41_000):
+        mask = np.array(action).reshape(-1, 1)
+        mask = mask.astype(float)
+        s_obfuscated = mask * magnitude
+
+        # CONVERT BACK TO WAV
+        obfuscated_audio = librosa.istft(s_obfuscated * phase)
+
+        return obfuscated_audio
     def render(self, mode="human"):
         return NotImplementedError
     

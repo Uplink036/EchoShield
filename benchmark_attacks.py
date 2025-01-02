@@ -7,8 +7,53 @@ from audio.whisper_functions import transcribe
 from environment.audio_env import AudioObfuscationEnv
 import soundfile as sf
 import scipy.signal as signal
+import torch
+import numpy as np
+import keras
+from environment.stft_env import STFTAudioObfuscationEnv
+from environment.mel_env import MelAudioObfuscationEnv
+from models.ddpg import DDPG
 
+WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
+TOTAL_EPISODES = 100
+AUDIO_LENGTH = 257
+
+STFT_MODEL_PATH = "stft_trained_model"
+MEL_MODEL_PATH = "mel_trained_model"
 FOLDER = "testing_data/"
+
+MEL_MAGNITUDE = 500
+
+
+def stft_attack(data, sr, env, agent):
+    s_full, phase = librosa.magphase(
+        librosa.stft(data, n_fft=512))
+    prev_state = np.array(s_full)
+    prev_state = np.sum(prev_state, axis=1)/prev_state.shape[1]
+    tf_prev_state = keras.ops.expand_dims(
+        keras.ops.convert_to_tensor(prev_state), 0
+    )
+    action = agent.policy(tf_prev_state)
+
+    state = env.perform_attack(action, s_full, phase, sr)
+
+    return state
+
+def mel_attack(data, sr, env, agent):
+    s_full, phase = librosa.magphase(
+        librosa.stft(data, n_fft=512))
+    prev_state = np.array(s_full)
+    prev_state = np.sum(prev_state, axis=1)/prev_state.shape[1]
+    tf_prev_state = keras.ops.expand_dims(
+        keras.ops.convert_to_tensor(prev_state), 0
+    )
+    action = agent.policy(tf_prev_state)
+    action = action.astype(int) + MEL_MAGNITUDE + 1
+
+    state = env.perform_attack(action, data, sr)
+
+    return state
+
 
 def get_audio_data(folder_path):
     """
@@ -116,6 +161,14 @@ if __name__ == "__main__":
         f.write("file_index,attack_type,similarity,audio_distance,success,audio_path\n")
     # Create the vectorized environment
     env = AudioObfuscationEnv(dataset, asr_model, 0)
+    stft_env = STFTAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
+    stft_agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 1.0)
+    stft_agent.load(STFT_MODEL_PATH)
+
+    mel_env = MelAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
+    mel_agent = DDPG(AUDIO_LENGTH, 2, MEL_MAGNITUDE)
+    mel_agent.load(MEL_MODEL_PATH)
+    
     metrics_file = "metrics_compare.csv"
 
     for i in range(10000):
@@ -125,6 +178,11 @@ if __name__ == "__main__":
         with open(env.transcription, "r") as f:
             original_transcription = f.read()
 
+        # STFT attack
+        attack_stft = stft_attack(audio, sr, stft_env, stft_agent)
+        
+        # Mel attack
+        attack_mel = mel_attack(audio, sr, mel_env, mel_agent)
         # Random noise attack
         attack_rn = random_noise_attack(0.01, audio)
 
@@ -146,6 +204,8 @@ if __name__ == "__main__":
         attack_empty = empty_attack(audio)
         # Transcribe the attack and compare with the original transcription
         folder = "test_attacks/"
+        attack_stft_path = "attack_stft.wav"
+        attack_mel_path = "attack_mel.wav"
         attack_rn_path = "attack_rn/" + str(i) + ".wav"
         attack_fn_path = "attack_fn/" + str(i) + ".wav"
         attack_mn_path = "attack_mn/" + str(i) + ".wav"
@@ -153,6 +213,10 @@ if __name__ == "__main__":
         attack_fir_path = "attack_fir/" + str(i) + ".wav"
         attack_empty_path = "attack_empty/" + str(i) + ".wav"
 
+        similarity_stft, audio_distance_stft = calculate_measurements(
+            attack_stft, folder+attack_stft_path, env, sr, asr_model, original_transcription)
+        similarity_mel, audio_distance_mel = calculate_measurements(
+            attack_mel, folder+attack_mel_path, env, sr, asr_model, original_transcription)
         similarity_rn, audio_distance_rn,  = calculate_measurements(
             attack_rn, folder+attack_rn_path, env, sr, asr_model, original_transcription)
         similarity_fn, audio_distance_fn,  = calculate_measurements(
@@ -166,6 +230,9 @@ if __name__ == "__main__":
         similarity_empty, audio_distance_empty = calculate_measurements(
             attack_empty, folder+attack_empty_path, env, sr, asr_model, original_transcription)
 
+        append_to_csv(metrics_file, i, "stft", similarity_stft, audio_distance_stft
+                      )
+        append_to_csv(metrics_file, i, "mel", similarity_mel, audio_distance_mel)
         append_to_csv(metrics_file, i, "random_noise",
                       similarity_rn, audio_distance_rn, attack_rn_path)
         append_to_csv(metrics_file, i, "fft_noise",

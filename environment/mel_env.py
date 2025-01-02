@@ -32,7 +32,7 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
             actual_transcription = f.read().replace("\n", "")
 
         transcription_similarity = self._calculate_similarity(
-            actual_transcription, predicted_transcription)
+        actual_transcription, predicted_transcription, alpha=4)
 
         audio_distance = self._noise_reward(obfuscated_audio, 0.5)
         # Lower similarity and smaller noise are better
