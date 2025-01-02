@@ -20,6 +20,7 @@ AUDIO_LENGTH = 257
 
 STFT_MODEL_PATH = "stft_trained_model"
 MEL_MODEL_PATH = "mel_trained_model"
+FOLDER = "testing_data/"
 
 MEL_MAGNITUDE = 500
 
@@ -52,6 +53,19 @@ def mel_attack(data, sr, env, agent):
     state = env.perform_attack(action, data, sr)
 
     return state
+
+
+def get_audio_data(folder_path):
+    """
+    Given a path, find all files in that path that ends with ".waw" and returns them.
+    """
+    files = os.listdir(folder_path)
+    audio_files = [folder_path + f for f in files if f.endswith(".wav")]
+    transcriptions = [f.replace(".wav", ".txt") for f in audio_files]
+    dataset = [
+        {"audio_file": f, "transcription": t} for f, t in zip(audio_files, transcriptions)
+    ]
+    return dataset
 
 def random_noise_attack(epsilon, data):
     noise = np.random.uniform(-epsilon, epsilon, data.shape)
@@ -116,14 +130,18 @@ def empty_attack(data):
     return data
 
 
-def append_to_csv(file, index, attack, similarity, audio_distance):
+def append_to_csv(file, index, attack, similarity, audio_distance, audio_path):
     success_threshold = 0.85
     success = 1 if similarity <= success_threshold else 0
     with open(file, "a") as f:
-        f.write(f"{index},{attack},{similarity},{audio_distance},{success}\n")
+        f.write(f"{index},{attack},{similarity},{audio_distance},{success},{audio_path}\n")
 
 
 def calculate_measurements(attack, filepath, env, sr, asr_model, original_transcription):
+    directory = os.path.dirname(filepath)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     sf.write(filepath, attack, sr)
     transcription = transcribe(asr_model, filepath, cuda=False)
     similarity = env._calculate_similarity(
@@ -132,28 +150,15 @@ def calculate_measurements(attack, filepath, env, sr, asr_model, original_transc
     return similarity, audio_distance
 
 
-def get_audio_data(folder_path):
-    """
-    Given a path, find all files in that path that ends with ".waw" and returns them.
-    """
-    files = os.listdir(folder_path)
-    audio_files = [folder_path + f for f in files if f.endswith(".wav")]
-    transcriptions = [f.replace(".wav", ".txt") for f in audio_files]
-    dataset = [
-        {"audio_file": f, "transcription": t} for f, t in zip(audio_files, transcriptions)
-    ]
-    return dataset
-
-
 if __name__ == "__main__":
-    files = os.listdir(
-        WAW_FILEPATH)
-    dataset = get_audio_data(WAW_FILEPATH)
+    if not os.path.exists(FOLDER):
+        exit("Test folder does not exist.")
+    dataset = get_audio_data(FOLDER)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     asr_model = whisper.load_model("base").to(device)
 
     with open("metrics_compare.csv", "w") as f:
-        f.write("file_index,attack_type,similarity,audio_distance,success\n")
+        f.write("file_index,attack_type,similarity,audio_distance,success,audio_path\n")
     # Create the vectorized environment
     env = AudioObfuscationEnv(dataset, asr_model, 0)
     stft_env = STFTAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
@@ -198,15 +203,15 @@ if __name__ == "__main__":
 
         attack_empty = empty_attack(audio)
         # Transcribe the attack and compare with the original transcription
-        folder = "temp_wavs/"
+        folder = "test_attacks/"
         attack_stft_path = "attack_stft.wav"
         attack_mel_path = "attack_mel.wav"
-        attack_rn_path = "attack_rn.wav"
-        attack_fn_path = "attack_fn.wav"
-        attack_mn_path = "attack_mn.wav"
-        attack_bp_path = "attack_bp.wav"
-        attack_fir_path = "attack_fir.wav"
-        attack_empty_path = "attack_empty.wav"
+        attack_rn_path = "attack_rn/" + str(i) + ".wav"
+        attack_fn_path = "attack_fn/" + str(i) + ".wav"
+        attack_mn_path = "attack_mn/" + str(i) + ".wav"
+        attack_bp_path = "attack_bp/" + str(i) + ".wav"
+        attack_fir_path = "attack_fir/" + str(i) + ".wav"
+        attack_empty_path = "attack_empty/" + str(i) + ".wav"
 
         similarity_stft, audio_distance_stft = calculate_measurements(
             attack_stft, folder+attack_stft_path, env, sr, asr_model, original_transcription)
@@ -229,14 +234,14 @@ if __name__ == "__main__":
                       )
         append_to_csv(metrics_file, i, "mel", similarity_mel, audio_distance_mel)
         append_to_csv(metrics_file, i, "random_noise",
-                      similarity_rn, audio_distance_rn)
+                      similarity_rn, audio_distance_rn, attack_rn_path)
         append_to_csv(metrics_file, i, "fft_noise",
-                      similarity_fn, audio_distance_fn)
+                      similarity_fn, audio_distance_fn, attack_fn_path)
         append_to_csv(metrics_file, i, "mel_noise",
-                      similarity_mn, audio_distance_mn)
+                      similarity_mn, audio_distance_mn, attack_mn_path)
         append_to_csv(metrics_file, i, "low_and_high_pass",
-                      similarity_bp, audio_distance_bp)
+                      similarity_bp, audio_distance_bp, attack_bp_path)
         append_to_csv(metrics_file, i, "fir_filter",
-                      similarity_fir, audio_distance_fir)
+                      similarity_fir, audio_distance_fir, attack_fir_path)
         append_to_csv(metrics_file, i, "empty",
-                      similarity_empty, audio_distance_empty)
+                      similarity_empty, audio_distance_empty, attack_empty_path)

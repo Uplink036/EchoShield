@@ -26,7 +26,7 @@ def transcribe(model: whisper, input_file: str, cuda: bool = False):
         )
     except Exception as e:
         print("Error: ", e)
-        return "Error"
+        return "Error" + str(e)
 
     print("Transcription: ", result["text"])
     return result["text"]

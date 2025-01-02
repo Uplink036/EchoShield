@@ -7,10 +7,14 @@ import whisper
 import torch
 import numpy as np
 import keras
-from environment.stft_env import STFTAudioObfuscationEnv
+from environment.stft_env import STFTAudioObfuscationEnv, preprocess_input
 from models.ddpg import DDPG
+from data_splitting import train_test_split
 
-WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
+DATA_FOLDER = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
+TRAINING_FILEPATH = "training_data/"
+TESTING_FILEPATH = "testing_data/"
+RESHUFFLE = False
 TOTAL_EPISODES = 100
 AUDIO_LENGTH = 257
 RUNS_PER_EPISODE = 10
@@ -19,21 +23,21 @@ LOAD_TRAINED_MODEL = False
 PATH = "stft_trained_model"
 
 
-def train():
+def train(dataset):
     """
     Trains a DDPG Agent with environment AudioObfuscationEnv
     """
     ep_reward_list = []
     avg_reward_list = []
 
-    env = STFTAudioObfuscationEnv(DATASET, get_asr(), AUDIO_LENGTH)
+    env = STFTAudioObfuscationEnv(dataset, get_asr(), AUDIO_LENGTH)
     agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 2)
     if LOAD_TRAINED_MODEL:
         agent.load(PATH)
 
     for ep in range(TOTAL_EPISODES):
-        prev_state = env.reset()
-        prev_state = np.sum(prev_state, axis=1)/prev_state.shape[1]
+        audio = env.reset()
+        prev_state = preprocess_input(audio, AUDIO_LENGTH-1)
         episodic_reward = 0
         loop = 0
 
@@ -106,7 +110,9 @@ def update_target(target, original, tau):
 
     target.set_weights(target_weights)
 
-
 DATASET = get_audio_data(WAW_FILEPATH)
 if __name__ == "__main__":
-    train()
+    if not os.path.exists(TRAINING_FILEPATH) or RESHUFFLE:
+        train_test_split(DATA_FOLDER, TRAINING_FILEPATH, TESTING_FILEPATH, 0.7)
+    dataset = get_audio_data(TRAINING_FILEPATH)
+    train(dataset)
