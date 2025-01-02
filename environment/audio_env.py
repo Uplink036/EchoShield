@@ -7,11 +7,8 @@ import Levenshtein
 import librosa
 import numpy as np
 import gymnasium as gym
-import scipy.spatial.distance as dist
-from fastdtw import fastdtw
-from audio.audio import get_wav_info, write_waw
-from audio.whisper_functions import transcribe
-
+from sklearn.decomposition import PCA
+from audio.audio import get_wav_info
 
 class AudioObfuscationEnv(gym.Env):
     """
@@ -93,3 +90,16 @@ class AudioObfuscationEnv(gym.Env):
 
     def render(self, mode="human"):
         raise NotImplementedError
+
+
+def get_pca_components(pca: PCA, confidence=0.99) -> int:
+    """
+    Give a PCA model that has been fited, it will calculate the 
+    number of components suitable for that input  
+
+    :param pca: A scikit class that has been fitted 
+    :param confidence: how much of the variance in the data we capture.
+    """
+    explained_variance_ratio = np.cumsum(pca.explained_variance_ratio_)
+    num_components = np.argmax(explained_variance_ratio >= confidence) + 1
+    return num_components
