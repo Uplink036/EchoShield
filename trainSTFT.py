@@ -11,17 +11,17 @@ from environment.stft_env import STFTAudioObfuscationEnv, preprocess_input
 from models.ddpg import DDPG
 from data_splitting import train_test_split
 
-DATA_FOLDER = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
-TRAINING_FILEPATH = "training_data/"
-TESTING_FILEPATH = "testing_data/"
-RESHUFFLE = False
-TOTAL_EPISODES = 100
-AUDIO_LENGTH = 257
-RUNS_PER_EPISODE = 10
-SAVE_TRAINED_MODEL = True
-LOAD_TRAINED_MODEL = False
-PATH = "stft_trained_model"
-
+DATA_FOLDER         = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
+TRAINING_FILEPATH   = "training_data/"
+TESTING_FILEPATH    = "testing_data/"
+RESHUFFLE           = False
+TOTAL_EPISODES      = 150
+AUDIO_LENGTH        = 257
+NUM_COMPONENTS      = 18
+RUNS_PER_EPISODE    = 20
+SAVE_TRAINED_MODEL  = True
+LOAD_TRAINED_MODEL  = False
+PATH                = "stft_trained_model"
 
 def train(dataset):
     """
@@ -31,13 +31,13 @@ def train(dataset):
     avg_reward_list = []
 
     env = STFTAudioObfuscationEnv(dataset, get_asr(), AUDIO_LENGTH)
-    agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 2)
+    agent = DDPG(AUDIO_LENGTH*NUM_COMPONENTS, AUDIO_LENGTH, 2)
     if LOAD_TRAINED_MODEL:
         agent.load(PATH)
 
     for ep in range(TOTAL_EPISODES):
         audio = env.reset()
-        prev_state = preprocess_input(audio, AUDIO_LENGTH-1)
+        prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
         episodic_reward = 0
         loop = 0
 

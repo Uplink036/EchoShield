@@ -1,5 +1,6 @@
 import numpy as np
 import librosa
+from sklearn.decomposition import PCA
 from environment.audio_env import AudioObfuscationEnv
 from audio.audio import write_waw
 from audio.whisper_functions import transcribe
@@ -33,12 +34,13 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
         transcription_similarity = self._calculate_similarity(
         actual_transcription, predicted_transcription, alpha=4)
 
-        audio_similarity = self._noise_reward(obfuscated_audio, 0.5)
-        reward = 1-transcription_similarity+audio_similarity
+        audio_distance = self._noise_reward(obfuscated_audio, 0.5)
+        # Lower similarity and smaller noise are better
+        reward = -1*(transcription_similarity+0.1)*(audio_distance+1)
         # Save metrics
         with open(self._metrics_file, "a") as f:
             f.write(
-                f"{self.current_index},{reward},{transcription_similarity},{audio_similarity}\n")
+                f"{self.current_index},{reward},{transcription_similarity},{audio_distance}\n")
 
         terminated = transcription_similarity < 0.85
         truncated = False
@@ -47,12 +49,14 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
         next_state = preprocess_input(obfuscated_audio)
         return next_state, reward, terminated, truncated, info
 
-def preprocess_input(audio_signal, shape=256):
+def preprocess_input(audio_signal, shape=256, num_components=18):
     """
     Given an audio signal, send back the expected model input
     """
     s_full, _ = librosa.magphase(
         librosa.stft(audio_signal, n_fft=shape*2))
     magnitude = np.array(s_full)
-    state = np.sum(magnitude, axis=1) / magnitude.shape[1]
-    return state
+    pca = PCA(n_components=num_components)
+    audio_pca = pca.fit_transform(magnitude)
+    flat_pca = audio_pca.flatten()
+    return flat_pca
