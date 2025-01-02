@@ -7,11 +7,8 @@ import Levenshtein
 import librosa
 import numpy as np
 import gymnasium as gym
-import scipy.spatial.distance as dist
-from fastdtw import fastdtw
-from audio.audio import get_wav_info, write_waw
-from audio.whisper_functions import transcribe
-
+from sklearn.decomposition import PCA
+from audio.audio import get_wav_info
 
 class AudioObfuscationEnv(gym.Env):
     """
@@ -27,7 +24,7 @@ class AudioObfuscationEnv(gym.Env):
         self._metrics_file = "metrics.csv"
 
         with open(self._metrics_file, "w") as f:
-            f.write("index,reward,transcription_sim,audio_sim\n")
+            f.write("index,reward,transcription_sim,audio_dissim\n")
 
     def _load_audio_file(self, filepath: str, transcription):
         """
@@ -93,3 +90,30 @@ class AudioObfuscationEnv(gym.Env):
 
     def render(self, mode="human"):
         raise NotImplementedError
+
+
+def get_pca_components(pca: PCA, confidence=0.99) -> int:
+    """
+    Give a PCA model that has been fited, it will calculate the 
+    number of components suitable for that input  
+
+    :param pca: A scikit class that has been fitted 
+    :param confidence: how much of the variance in the data we capture.
+    """
+    explained_variance_ratio = np.cumsum(pca.explained_variance_ratio_)
+    num_components = np.argmax(explained_variance_ratio >= confidence) + 1
+    return num_components
+
+def preprocess_input_mfcc(audio_signal, sr=44100, n_mfcc=13, shape=256):
+    """
+    Preprocess the audio signal using MFCC for feature extraction.
+
+    Note does not really work right now, as the output is not standardized, but putting in here for 
+    """
+    s_full, _ = librosa.magphase(
+        librosa.stft(audio_signal, n_fft=shape*2))
+    magnitude = np.array(s_full)
+    mel_spectrogram = librosa.feature.melspectrogram(S=magnitude**2, sr=sr)
+    mfcc_features = librosa.feature.mfcc(S=librosa.power_to_db(mel_spectrogram), n_mfcc=n_mfcc)
+    flat_mfcc = mfcc_features.flatten()
+    return flat_mfcc
