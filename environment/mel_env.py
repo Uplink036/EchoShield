@@ -48,6 +48,20 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
 
         next_state = preprocess_input(obfuscated_audio)
         return next_state, reward, terminated, truncated, info
+    
+    def perform_attack(self, action, audio, sr=44_100):
+        n_fft = action[0]
+        hop_length = 16
+        n_mels = max(action[1] // 8, 64)
+        if (n_mels > n_fft):
+            n_fft = n_mels
+        
+        mel_spec = librosa.feature.melspectrogram(
+            y=audio, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
+        obfuscated_audio = librosa.feature.inverse.mel_to_audio(
+            mel_spec, sr=sr, n_fft=n_fft, hop_length=hop_length, n_iter=32
+        )
+        return obfuscated_audio
 
 def preprocess_input(audio_signal, shape=256, num_components=18):
     """
@@ -60,3 +74,4 @@ def preprocess_input(audio_signal, shape=256, num_components=18):
     audio_pca = pca.fit_transform(magnitude)
     flat_pca = audio_pca.flatten()
     return flat_pca
+
