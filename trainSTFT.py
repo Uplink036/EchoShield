@@ -15,11 +15,10 @@ DATA_FOLDER         = "data/archive/Raw JL corpus (unchecked and unannotated)/JL
 TRAINING_FILEPATH   = "training_data/"
 TESTING_FILEPATH    = "testing_data/"
 RESHUFFLE           = False
-TOTAL_EPISODES      = 100
+TOTAL_EPISODES      = 150
 AUDIO_LENGTH        = 257
 NUM_COMPONENTS      = 18
-ACTION_CHUNKS       = 4
-RUNS_PER_EPISODE    = 10
+RUNS_PER_EPISODE    = 20
 
 def train(dataset):
     """
@@ -29,7 +28,7 @@ def train(dataset):
     avg_reward_list = []
 
     env = STFTAudioObfuscationEnv(dataset, get_asr(), AUDIO_LENGTH)
-    agent = DDPG(AUDIO_LENGTH*NUM_COMPONENTS, AUDIO_LENGTH*ACTION_CHUNKS, 2)
+    agent = DDPG(AUDIO_LENGTH*NUM_COMPONENTS, AUDIO_LENGTH, 2)
 
     for ep in range(TOTAL_EPISODES):
         audio = env.reset()
@@ -43,7 +42,6 @@ def train(dataset):
             )
 
             action = agent.policy(tf_prev_state)
-            action = np.reshape(action, (AUDIO_LENGTH, ACTION_CHUNKS))
             state, reward, done, truncated, _ = env.step(action)
 
             agent.buffer.record((prev_state, action, reward, state))
