@@ -60,6 +60,7 @@ class STFTAudioObfuscationEnv(AudioObfuscationEnv):
         return NotImplementedError
     
 
+
 def preprocess_input(audio_signal, shape=256, num_components=18):
     """
     Given an audio signal, send back the expected model input
@@ -71,3 +72,5 @@ def preprocess_input(audio_signal, shape=256, num_components=18):
     audio_pca = pca.fit_transform(magnitude)
     flat_pca = audio_pca.flatten()
     return flat_pca
+    librosa.stft(audio_signal, n_fft=shape*2))
+    magnitude = np.array(s_full)
