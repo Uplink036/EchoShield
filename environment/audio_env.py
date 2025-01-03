@@ -34,6 +34,7 @@ class AudioObfuscationEnv(gym.Env):
         # Go to FFT
         self.audio_signal = wav_info["data"]
         self.sample_rate = wav_info["samplerate"]
+        self.duration = wav_info["duration"]
         self.transcription = transcription
 
         s_full, phase = librosa.magphase(
