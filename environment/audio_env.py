@@ -104,7 +104,7 @@ def get_pca_components(pca: PCA, confidence=0.99) -> int:
     num_components = np.argmax(explained_variance_ratio >= confidence) + 1
     return num_components
 
-def preprocess_input_mfcc(audio_signal, sr=44100, n_mfcc=13, shape=256):
+def preprocess_input_mfcc(audio_signal, sr=44_100, n_mfcc=13, shape=256):
     """
     Preprocess the audio signal using MFCC for feature extraction.
 

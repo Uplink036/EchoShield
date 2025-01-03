@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 FOLDER = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
-SR = 44100
+SR = 44_100
 TRAIN_TEST_SPLIT = 0.7
 
 def get_audio_data(folder_path):
