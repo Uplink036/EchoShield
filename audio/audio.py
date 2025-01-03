@@ -93,6 +93,12 @@ def make_test_attack(audio, low, high):
     size = audio["length"]
     return np.random.randint(low=low, high=high, size=size, dtype=np.int16)
 
+def get_mfcc_frames(duration, sr, n_fft):
+    """
+    Given the duration, sampling rate and fft length, we can 
+    calculate how many frames stft or mfcc returns.
+    """
+    return duration*sr/(n_fft/4)
 
 if __name__ == "__main__":
     filepath = './data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/female1_angry_4a_1.wav'
