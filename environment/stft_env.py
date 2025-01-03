@@ -56,7 +56,7 @@ class STFTAudioObfuscationEnv(AudioObfuscationEnv):
         return next_state, reward, terminated, truncated, info
 
     
-    def perform_attack(self, action, magnitude, phase, sr=41_000):
+    def perform_attack(self, action, magnitude, phase, sr=44_100):
         mask = np.array(action).reshape(-1, 1)
         mask = mask.astype(float)
         s_obfuscated = mask * magnitude

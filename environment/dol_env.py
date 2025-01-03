@@ -42,19 +42,18 @@ class DolAudioObfuscationEnv(AudioObfuscationEnv):
         return next_state, reward, terminated, truncated, info
     
     def perform_attack(self, action, audio, duration, sr=44_100):
-        time_domain_signal = audio
-        duration = self.duration
+        time_domain_signal = audio 
         
         lowest_freq = 20
-        highest_freq = 20500
+        highest_freq = 20000
 
         frequency_domain_signal = np.fft.fft(time_domain_signal)
 
         lowest_sample = int(lowest_freq*duration)
         highest_sample = int(sr*duration/2) # Nyquist frequency
 
-        step_low = lowest_sample//10 # 10 steps
-        step_high = (highest_sample-highest_freq*duration)//(len(action)-10) 
+        step_low = int(lowest_sample//10) # 10 steps
+        step_high = int((highest_sample-highest_freq*duration)//(len(action)-10)) 
         for j, i in enumerate(range(0, lowest_sample, step_low)):
             frequency_domain_signal[i] = frequency_domain_signal[i] + action[j]
         for j, i in enumerate(range(int(highest_freq*duration), highest_sample, step_high)):

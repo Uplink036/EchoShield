@@ -49,7 +49,7 @@ def train(dataset):
             )
 
             action = agent.policy(tf_prev_state)
-            action = action.astype(int) + ACTION_MAGNITUDE + 1
+           
             state, reward, done, truncated, _ = env.step(action)
 
             agent.buffer.record((prev_state, action, reward, state))

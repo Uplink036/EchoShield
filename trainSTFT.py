@@ -19,6 +19,7 @@ TOTAL_EPISODES      = 150
 AUDIO_LENGTH        = 257
 NUM_COMPONENTS      = 18
 RUNS_PER_EPISODE    = 20
+ACTION_MAGNITUDE    = 2
 SAVE_TRAINED_MODEL  = True
 LOAD_TRAINED_MODEL  = False
 PATH                = "stft_trained_model"
@@ -31,7 +32,7 @@ def train(dataset):
     avg_reward_list = []
 
     env = STFTAudioObfuscationEnv(dataset, get_asr(), AUDIO_LENGTH)
-    agent = DDPG(AUDIO_LENGTH*NUM_COMPONENTS, AUDIO_LENGTH, 2)
+    agent = DDPG(AUDIO_LENGTH*NUM_COMPONENTS, AUDIO_LENGTH, ACTION_MAGNITUDE)
     if LOAD_TRAINED_MODEL:
         agent.load(PATH)
 
