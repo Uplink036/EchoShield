@@ -118,17 +118,16 @@ def preprocess_input(audio_signal, shape=256, num_components=18):
     return flat_pca
 
 
-def preprocess_input_mfcc(audio_signal, sr=44100, n_mfcc=13, shape=256):
+def preprocess_input_mfcc(audio_signal, duration=1, sr=44100, n_mfcc=13, shape=256):
     """
     Preprocess the audio signal using MFCC for feature extraction.
 
     Note does not really work right now, as the output is not standardized, but putting in here for 
     """
     s_full, _ = librosa.magphase(
-        librosa.stft(audio_signal, n_fft=shape*2))
+        librosa.stft(audio_signal[:duration*sr], n_fft=shape*2))
     magnitude = np.array(s_full)
     mel_spectrogram = librosa.feature.melspectrogram(S=magnitude**2, sr=sr)
     mfcc_features = librosa.feature.mfcc(S=librosa.power_to_db(mel_spectrogram), n_mfcc=n_mfcc)
     flat_mfcc = mfcc_features.flatten()
     return flat_mfcc
-
