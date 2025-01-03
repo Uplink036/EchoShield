@@ -9,7 +9,7 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
     """
     A subclass to overide critical steps for MEL spectogram part.
     """
-    def step(self, action, sr=41_000):
+    def step(self, action, sr=44_100):
         """
         Given an action, ...
         """

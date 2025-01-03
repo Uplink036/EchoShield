@@ -9,7 +9,7 @@ class STFTAudioObfuscationEnv(AudioObfuscationEnv):
     """
     A subclass to overide critical steps for STFT part.
     """
-    def step(self, action, sr=41_000):
+    def step(self, action, sr=44_100):
         """
         Given an action, apply it to the current file and return how well it went.
         """
@@ -22,7 +22,7 @@ class STFTAudioObfuscationEnv(AudioObfuscationEnv):
         obfuscated_audio = librosa.istft(s_obfuscated * self.phase)
 
         # save to file for transcription
-        write_waw("obfuscated_audio.wav", 44100, obfuscated_audio)
+        write_waw("obfuscated_audio.wav", sr, obfuscated_audio)
         # Get transcription from ASR model
         print("Transcription: ", self.transcription)
         predicted_transcription = transcribe(
@@ -56,19 +56,18 @@ class STFTAudioObfuscationEnv(AudioObfuscationEnv):
         return next_state, reward, terminated, truncated, info
 
     
-    def perform_attack(self, action, magnitude, phase, sr=41_000):
+    def perform_attack(self, action, magnitude, phase, sr=44_100):
         mask = np.array(action).reshape(-1, 1)
         mask = mask.astype(float)
         s_obfuscated = mask * magnitude
 
         # CONVERT BACK TO WAV
         obfuscated_audio = librosa.istft(s_obfuscated * phase)
-
         return obfuscated_audio
+    
     def render(self, mode="human"):
         return NotImplementedError
     
-
 
 def preprocess_input(audio_signal, shape=256, num_components=18):
     """
