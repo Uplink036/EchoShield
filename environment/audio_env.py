@@ -104,6 +104,20 @@ def get_pca_components(pca: PCA, confidence=0.99) -> int:
     num_components = np.argmax(explained_variance_ratio >= confidence) + 1
     return num_components
 
+def preprocess_input(audio_signal, shape=256, num_components=18):
+    """
+    Given an audio signal, send back the expected model input. 
+    This is (for the moment) considired the default prreprocessing function. 
+    """
+    s_full, _ = librosa.magphase(
+        librosa.stft(audio_signal, n_fft=shape*2))
+    magnitude = np.array(s_full)
+    pca = PCA(n_components=num_components)
+    audio_pca = pca.fit_transform(magnitude)
+    flat_pca = audio_pca.flatten()
+    return flat_pca
+
+
 def preprocess_input_mfcc(audio_signal, sr=44100, n_mfcc=13, shape=256):
     """
     Preprocess the audio signal using MFCC for feature extraction.
@@ -117,3 +131,4 @@ def preprocess_input_mfcc(audio_signal, sr=44100, n_mfcc=13, shape=256):
     mfcc_features = librosa.feature.mfcc(S=librosa.power_to_db(mel_spectrogram), n_mfcc=n_mfcc)
     flat_mfcc = mfcc_features.flatten()
     return flat_mfcc
+

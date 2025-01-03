@@ -7,7 +7,8 @@ import whisper
 import torch
 import numpy as np
 import keras
-from environment.mel_env import MelAudioObfuscationEnv, preprocess_input
+from environment.audio_env import preprocess_input
+from environment.mel_env import MelAudioObfuscationEnv
 from models.ddpg import DDPG
 from data_splitting import train_test_split
 

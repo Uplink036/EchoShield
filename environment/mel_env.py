@@ -62,16 +62,3 @@ class MelAudioObfuscationEnv(AudioObfuscationEnv):
             mel_spec, sr=sr, n_fft=n_fft, hop_length=hop_length, n_iter=32
         )
         return obfuscated_audio
-
-def preprocess_input(audio_signal, shape=256, num_components=18):
-    """
-    Given an audio signal, send back the expected model input
-    """
-    s_full, _ = librosa.magphase(
-        librosa.stft(audio_signal, n_fft=shape*2))
-    magnitude = np.array(s_full)
-    pca = PCA(n_components=num_components)
-    audio_pca = pca.fit_transform(magnitude)
-    flat_pca = audio_pca.flatten()
-    return flat_pca
-

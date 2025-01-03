@@ -7,7 +7,8 @@ import whisper
 import torch
 import numpy as np
 import keras
-from environment.stft_env import STFTAudioObfuscationEnv, preprocess_input
+from environment.audio_env import preprocess_input
+from environment.stft_env import STFTAudioObfuscationEnv
 from models.ddpg import DDPG
 from data_splitting import train_test_split
 
