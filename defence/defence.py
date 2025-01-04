@@ -15,6 +15,9 @@ from scikeras.wrappers import KerasClassifier
 from sklearn.model_selection import cross_val_score, cross_validate
 from sklearn.model_selection import StratifiedKFold
 
+COMPARE_DETECTOR_ON = False
+BINARY_CLASSIFIER_ON = True
+
 def get_audio_data(folder_path):
     """
     Given a path, find all files in that path that ends with ".waw" and returns them.
@@ -90,7 +93,7 @@ class EchoShield:
         """
         return Levenshtein.ratio(transcription1, transcription2) >= threshold
 
-    def detect_compare(self, input_file, threshold=0.8):
+    def detect_compare(self, input_file, threshold=0.85):
         """
         Using another sr model, compare the transcription of the input file to the given transcription
         If they are roughly the same, return True, else return False
@@ -109,28 +112,6 @@ class EchoShield:
             return False
         else:
             return True
-
-    def reduce_noise(self, audio_file):
-        """
-        Reduces the noise in an audio file
-
-        :param data: The audio data \n
-        """
-        data, sr = librosa.load(audio_file, sr=None)
-        S_full, phase = librosa.magphase(librosa.stft(data))
-
-        noise_power = np.mean(S_full[:, :int(100)], axis=1)
-        mask = S_full > noise_power[:, None]
-
-        mask = mask.astype(float)
-
-        mask = medfilt(mask, kernel_size=(1, 5))
-
-        S_clean = mask * S_full
-
-        reduced_audio = librosa.istft(S_clean * phase)
-
-        return reduced_audio, sr
 
     def evaluate_defence(self, clean_folder, obfuscated_folder, detect_function):
         """
@@ -159,7 +140,7 @@ class EchoShield:
                 fp += 1 # Cleaned labelled as attack
 
         
-        return tp, tn, fp, fn
+        return (tp, tn, fp, fn)
 
     def convert_to_mel_spectrogram(self, audio_file):
         """
@@ -170,14 +151,12 @@ class EchoShield:
         data, sr = librosa.load(audio_file, sr=self.sr)
 
         # Pad the audio file if it is too short
-        if len(data) < self.audio_length_s * sr:
-            data = np.pad(data, (0, self.audio_length_s*sr - len(data)))
-        else:
-            data = data[:self.audio_length_s * sr]
+        data = np.pad(data, (0, max(0, self.audio_length_s * sr - len(data))))
+        data = data[:self.audio_length_s * sr]
         mel_spec = librosa.feature.melspectrogram(
             y=data, sr=self.sr, n_fft=self.n_fft, hop_length=self.hop_length, n_mels=self.n_mels)
         mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
-
+        print("Mel Shape: ", mel_spec_db.shape)
         return mel_spec_db
 
     def init_binary_classifier(self):
@@ -196,7 +175,7 @@ class EchoShield:
         model.add(keras.layers.Dense(1, activation='sigmoid'))
 
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[keras.metrics.BinaryAccuracy(), keras.metrics.F1Score()])
-
+        keras.backend.clear_session()
         return model
     
     def train_binary_classifier_detector(self, clean_folder, obfuscated_folder):
@@ -222,13 +201,14 @@ class EchoShield:
         # Change so that X is the mel spectrogram
         X = np.array([self.convert_to_mel_spectrogram(f) for f in X])
 
-        estimator = KerasClassifier(model=self.binary_classifer, epochs=10, batch_size=10, verbose=1)
+        estimator = KerasClassifier(model=self.binary_classifer, epochs=10, batch_size=5, verbose=1)
         kfold = StratifiedKFold(n_splits=5, shuffle=True)
         results = cross_validate(estimator, X, y, cv=kfold, verbose=1, scoring=['accuracy', 'f1'])
 
         print("Accuracy: ", results['test_accuracy'].mean())
         print("F1: ", results['test_f1'].mean())
 
+        return results
 
 if __name__ == "__main__":
     # Load the audio file
@@ -237,11 +217,20 @@ if __name__ == "__main__":
 
     echo_shield = EchoShield(whisper_model)
 
-    # tp, tn, fp, fn = echo_shield.evaluate_defence("test_attacks/attack_empty/", "test_attacks/attack_bp/", echo_shield.detect_compare)
-    
-    # print(f"True Positives: {tp}")
-    # print(f"True Negatives: {tn}")
-    # print(f"False Positives: {fp}")
-    # print(f"False Negatives: {fn}")
+    if COMPARE_DETECTOR_ON:
+        conf_matrix_stft = echo_shield.evaluate_defence("test_attacks/attack_empty/", "test_attacks/attack_stft/", echo_shield.detect_compare)
+        conf_matrix_mel = echo_shield.evaluate_defence("test_attacks/attack_empty/", "test_attacks/attack_mel/", echo_shield.detect_compare)
+        conf_matrix_dol = echo_shield.evaluate_defence("test_attacks/attack_empty/", "test_attacks/attack_dol/", echo_shield.detect_compare)
 
-    echo_shield.train_binary_classifier_detector("test_attacks/attack_empty/", "test_attacks/attack_rn/")
+        print("STFT Confusion Matrix: ", conf_matrix_stft)
+        print("Mel Confusion Matrix: ", conf_matrix_mel)
+        print("DOL Confusion Matrix: ", conf_matrix_dol)
+
+    if BINARY_CLASSIFIER_ON:
+        results_stft = echo_shield.train_binary_classifier_detector("test_attacks/attack_empty/", "test_attacks/attack_stft/")
+        results_mel = echo_shield.train_binary_classifier_detector("test_attacks/attack_empty/", "test_attacks/attack_mel/")
+        results_dol = echo_shield.train_binary_classifier_detector("test_attacks/attack_empty/", "test_attacks/attack_dol/")
+
+        print("STFT Results: ", results_stft)
+        print("Mel Results: ", results_mel)
+        print("DOL Results: ", results_dol)
