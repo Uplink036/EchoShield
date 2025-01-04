@@ -11,6 +11,10 @@ from environment.dol_env import DolAudioObfuscationEnv, preprocess_input
 from models.ddpg import DDPG
 from data_splitting import train_test_split
 
+from audio.audio import get_audio_data
+from audio.whisper_functions import get_asr
+from models.ddpg import update_target
+
 DATA_FOLDER         = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
 TRAINING_FILEPATH   = "training_data/"
 TESTING_FILEPATH    = "testing_data/"
@@ -19,8 +23,8 @@ RUNS_PER_EPISODE    = 10
 TOTAL_EPISODES      = 600
 AUDIO_LENGTH        = 257
 NUM_COMPONENTS      = 18
-OUTPUT_OPTIONS      = 50
-ACTION_MAGNITUDE    = 2000
+OUTPUT_OPTIONS      = 100
+ACTION_MAGNITUDE    = 5000
 SAVE_TRAINED_MODEL  = True
 LOAD_TRAINED_MODEL  = False
 PATH                = "dol_trained_model"
@@ -71,45 +75,6 @@ def train(dataset):
     
     if SAVE_TRAINED_MODEL:
         agent.save(PATH)
-    
-def get_audio_data(folder_path):
-    """
-    Given a path, find all files in that path that ends with ".waw" and returns them.
-    """
-    files = os.listdir(folder_path)
-    audio_files = [folder_path + f for f in files if f.endswith(".wav")]
-    transcriptions = [f.replace(".wav", ".txt") for f in audio_files]
-    dataset = [
-        {"audio_file": f, "transcription": t} for f, t in zip(audio_files, transcriptions)
-    ]
-    return dataset
-
-def get_asr():
-    """
-    Get an (whisper) Automatic Speech Recognition (ASR) model.
-    """
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    asr_model = whisper.load_model("base").to(device)
-    return asr_model
-
-
-
-# Based on rate `tau`, which is much less than one.
-def update_target(target, original, tau):
-    """
-    Updates the model weights with the target weights
-
-    :param target: The model to change
-    :param original: The model that target will change with
-    :param tau: a number between 0-1 that will be the change of the model
-    """
-    target_weights = target.get_weights()
-    original_weights = original.get_weights()
-
-    for index, target_weight in enumerate(target_weights):
-        target_weights[index] = original_weights[index] * tau + target_weight * (1 - tau)
-
-    target.set_weights(target_weights)
 
 if __name__ == "__main__":
     if not os.path.exists(TRAINING_FILEPATH) or RESHUFFLE:

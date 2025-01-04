@@ -172,7 +172,22 @@ def get_critic(input_size, output_size):
     model = keras.Model([state_input, action_input], outputs)
     return model
 
+def update_target(target, original, tau):
+    """
+    Updates the model weights with the target weights
 
+    :param target: The model to change
+    :param original: The model that target will change with
+    :param tau: a number between 0-1 that will be the change of the model
+    """
+    target_weights = target.get_weights()
+    original_weights = original.get_weights()
+
+    for index, target_weight in enumerate(target_weights):
+        target_weights[index] = original_weights[index] * tau + target_weight * (1 - tau)
+
+    target.set_weights(target_weights)
+    
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
 

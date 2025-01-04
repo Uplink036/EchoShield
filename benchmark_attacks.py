@@ -4,15 +4,15 @@ import os
 import torch
 import whisper
 from audio.whisper_functions import transcribe
-from environment.audio_env import AudioObfuscationEnv
+from environment.audio_env import AudioObfuscationEnv, preprocess_input
 import soundfile as sf
 import scipy.signal as signal
 import torch
 import numpy as np
 import keras
-from environment.stft_env import STFTAudioObfuscationEnv, preprocess_input as stft_preprocess_input
-from environment.mel_env import MelAudioObfuscationEnv, preprocess_input as mel_preprocess_input
-from environment.dol_env import DolAudioObfuscationEnv, preprocess_input as dol_preprocess_input
+from environment.stft_env import STFTAudioObfuscationEnv
+from environment.mel_env import MelAudioObfuscationEnv
+from environment.dol_env import DolAudioObfuscationEnv
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
@@ -25,16 +25,18 @@ DOL_MODEL_PATH = "dol_trained_model"
 FOLDER = "testing_data/"
 
 STFT_MAGNITUDE = 2
-MEL_MAGNITUDE = 500
-DOL_MAGNITUDE = 2000
-NUM_COMPONENTS = 18
-DOL_SAMPLES = 50
 
+MEL_MAGNITUDE = 500
+
+DOL_MAGNITUDE = 5000
+DOL_SAMPLES = 100
+
+NUM_COMPONENTS = 18
 
 def stft_attack(data, sr, env, agent):
     s_full, phase = librosa.magphase(
         librosa.stft(data, n_fft=512))
-    prev_state = prev_state = stft_preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
+    prev_state = prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
     tf_prev_state = keras.ops.expand_dims(
         keras.ops.convert_to_tensor(prev_state), 0
     )
@@ -44,7 +46,7 @@ def stft_attack(data, sr, env, agent):
     return state
 
 def mel_attack(data, sr, env, agent):
-    prev_state = mel_preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
+    prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
     tf_prev_state = keras.ops.expand_dims(
         keras.ops.convert_to_tensor(prev_state), 0
     )
@@ -56,7 +58,7 @@ def mel_attack(data, sr, env, agent):
     return state
 
 def dol_attack(data, duration, sr, env, agent):
-    prev_state = dol_preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
+    prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
     tf_prev_state = keras.ops.expand_dims(
         keras.ops.convert_to_tensor(prev_state), 0
     )
@@ -250,21 +252,12 @@ if __name__ == "__main__":
         similarity_empty, audio_distance_empty = calculate_measurements(
             attack_empty, folder+attack_empty_path, env, sr, asr_model, original_transcription)
 
-        append_to_csv(metrics_file, i, "stft", similarity_stft, audio_distance_stft, attack_stft_path
-                      )
-        append_to_csv(metrics_file, i, "mel", similarity_mel, audio_distance_mel, attack_mel_path
-                      )
-        append_to_csv(metrics_file, i, "dol", similarity_dol, audio_distance_dol, attack_dol_path
-                      )
-        append_to_csv(metrics_file, i, "random_noise",
-                      similarity_rn, audio_distance_rn, attack_rn_path)
-        append_to_csv(metrics_file, i, "fft_noise",
-                      similarity_fn, audio_distance_fn, attack_fn_path)
-        append_to_csv(metrics_file, i, "mel_noise",
-                      similarity_mn, audio_distance_mn, attack_mn_path)
-        append_to_csv(metrics_file, i, "low_and_high_pass",
-                      similarity_bp, audio_distance_bp, attack_sd_path)
-        append_to_csv(metrics_file, i, "fir_filter",
-                      similarity_fir, audio_distance_fir, attack_fir_path)
-        append_to_csv(metrics_file, i, "empty",
-                      similarity_empty, audio_distance_empty, attack_empty_path)
+        append_to_csv(metrics_file, i, "stft", similarity_stft, audio_distance_stft, attack_stft_path)
+        append_to_csv(metrics_file, i, "mel", similarity_mel, audio_distance_mel, attack_mel_path)
+        append_to_csv(metrics_file, i, "dol", similarity_dol, audio_distance_dol, attack_dol_path)
+        append_to_csv(metrics_file, i, "random_noise",similarity_rn, audio_distance_rn, attack_rn_path)
+        append_to_csv(metrics_file, i, "fft_noise", similarity_fn, audio_distance_fn, attack_fn_path)
+        append_to_csv(metrics_file, i, "mel_noise", similarity_mn, audio_distance_mn, attack_mn_path)
+        append_to_csv(metrics_file, i, "low_and_high_pass", similarity_bp, audio_distance_bp, attack_sd_path)
+        append_to_csv(metrics_file, i, "fir_filter", similarity_fir, audio_distance_fir, attack_fir_path)
+        append_to_csv(metrics_file, i, "empty", similarity_empty, audio_distance_empty, attack_empty_path)
