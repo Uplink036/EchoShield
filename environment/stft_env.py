@@ -1,7 +1,7 @@
 import numpy as np
 import librosa
 from sklearn.decomposition import PCA
-from environment.audio_env import AudioObfuscationEnv
+from environment.audio_env import AudioObfuscationEnv, preprocess_input_mfcc
 from audio.audio import write_waw
 from audio.whisper_functions import transcribe
 
@@ -52,7 +52,7 @@ class STFTAudioObfuscationEnv(AudioObfuscationEnv):
         info = {}
 
         # Send FFT signal
-        next_state = preprocess_input(obfuscated_audio)
+        next_state = preprocess_input_mfcc(obfuscated_audio)
         return next_state, reward, terminated, truncated, info
 
     
