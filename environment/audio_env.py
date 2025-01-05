@@ -118,7 +118,7 @@ def preprocess_input(audio_signal, shape=256, num_components=18):
     return flat_pca
 
 
-def preprocess_input_mfcc(audio_signal, duration=1, sr=44100, n_mfcc=13, shape=256):
+def preprocess_input_mfcc(audio_signal, shape=256, n_mfcc=13, duration=1, sr=44100):
     """
     Preprocess the audio signal using MFCC for feature extraction.
 
