@@ -7,7 +7,8 @@ import whisper
 import torch
 import numpy as np
 import keras
-from environment.audio_env import preprocess_input
+from audio.audio import get_mfcc_frames
+from environment.audio_env import preprocess_input_mfcc
 from environment.mel_env import MelAudioObfuscationEnv
 from models.ddpg import DDPG
 from data_splitting import train_test_split
@@ -19,9 +20,10 @@ RESHUFFLE           = False
 RUNS_PER_EPISODE    = 10
 TOTAL_EPISODES      = 100
 AUDIO_LENGTH        = 257
-NUM_COMPONENTS      = 18
+NUM_COMPONENTS      = 13
 OUTPUT_OPTIONS      = 2
 ACTION_MAGNITUDE    = 500
+SR                  = 44_100
 SAVE_TRAINED_MODEL  = True
 LOAD_TRAINED_MODEL  = False
 PATH                = "mel_trained_model"
@@ -34,13 +36,12 @@ def train(dataset):
     avg_reward_list = []
 
     env = MelAudioObfuscationEnv(dataset, get_asr(), AUDIO_LENGTH)
-    agent = DDPG(AUDIO_LENGTH*NUM_COMPONENTS, OUTPUT_OPTIONS, ACTION_MAGNITUDE)
-
+    agent = DDPG(get_mfcc_frames(1, SR, (AUDIO_LENGTH-1)*2)*NUM_COMPONENTS, AUDIO_LENGTH, ACTION_MAGNITUDE)
     if LOAD_TRAINED_MODEL:
         agent.load(PATH)
     for ep in range(TOTAL_EPISODES):
         audio = env.reset()
-        prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
+        prev_state = preprocess_input_mfcc(audio, shape=AUDIO_LENGTH-1, n_mfcc=NUM_COMPONENTS)
         episodic_reward = 0
         loop = 0
 
