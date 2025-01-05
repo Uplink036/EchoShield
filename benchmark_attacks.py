@@ -3,6 +3,7 @@ import librosa
 import os
 import torch
 import whisper
+from audio.audio import get_mfcc_frames
 from audio.whisper_functions import transcribe
 from environment.audio_env import AudioObfuscationEnv
 import soundfile as sf
@@ -10,8 +11,9 @@ import scipy.signal as signal
 import torch
 import numpy as np
 import keras
-from environment.stft_env import STFTAudioObfuscationEnv, preprocess_input as stft_preprocess_input
-from environment.mel_env import MelAudioObfuscationEnv, preprocess_input as mel_preprocess_input
+from environment.audio_env import preprocess_input_mfcc
+from environment.stft_env import STFTAudioObfuscationEnv
+from environment.mel_env import MelAudioObfuscationEnv
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
@@ -23,13 +25,15 @@ MEL_MODEL_PATH = "mel_trained_model"
 FOLDER = "testing_data/"
 
 MEL_MAGNITUDE = 500
-NUM_COMPONENTS = 18
+NUM_COMPONENTS = 13
+
+SR = 44_100
 
 
 def stft_attack(data, sr, env, agent):
     s_full, phase = librosa.magphase(
         librosa.stft(data, n_fft=512))
-    prev_state = prev_state = stft_preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
+    prev_state = prev_state = preprocess_input_mfcc(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
     tf_prev_state = keras.ops.expand_dims(
         keras.ops.convert_to_tensor(prev_state), 0
     )
@@ -42,7 +46,7 @@ def stft_attack(data, sr, env, agent):
 def mel_attack(data, sr, env, agent):
     s_full, phase = librosa.magphase(
         librosa.stft(data, n_fft=512))
-    prev_state = mel_preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
+    prev_state = preprocess_input_mfcc(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
     tf_prev_state = keras.ops.expand_dims(
         keras.ops.convert_to_tensor(prev_state), 0
     )
@@ -161,11 +165,11 @@ if __name__ == "__main__":
     # Create the vectorized environment
     env = AudioObfuscationEnv(dataset, asr_model, 0)
     stft_env = STFTAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
-    stft_agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 1.0)
+    stft_agent = DDPG(get_mfcc_frames(1, SR, (AUDIO_LENGTH-1)*2)*NUM_COMPONENTS, AUDIO_LENGTH, 1.0)
     stft_agent.load(STFT_MODEL_PATH)
 
     mel_env = MelAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
-    mel_agent = DDPG(AUDIO_LENGTH, 2, MEL_MAGNITUDE)
+    mel_agent = DDPG(get_mfcc_frames(1, SR, (AUDIO_LENGTH-1)*2)*NUM_COMPONENTS, 2, MEL_MAGNITUDE)
     mel_agent.load(MEL_MODEL_PATH)
     
     metrics_file = "metrics_compare.csv"
