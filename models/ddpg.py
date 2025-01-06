@@ -121,6 +121,9 @@ class DDPG:
         """
         self.actor = keras.models.load_model(path + "actor.keras")
         self.critic = keras.models.load_model(path + "critic.keras")
+        self.t_actor.set_weights(self.actor.get_weights())
+        self.t_critic.set_weights(self.critic.get_weights())
+
 
 
 def get_actor(input_size, output_size, action_magnitude):
