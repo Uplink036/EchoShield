@@ -165,7 +165,7 @@ if __name__ == "__main__":
     # Create the vectorized environment
     env = AudioObfuscationEnv(dataset, asr_model, 0)
     stft_env = STFTAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
-    stft_agent = DDPG(get_mfcc_frames(1, SR, (AUDIO_LENGTH-1)*2)*NUM_COMPONENTS, AUDIO_LENGTH, 1.0)
+    stft_agent = DDPG(get_mfcc_frames(1, SR, (AUDIO_LENGTH-1)*2)*NUM_COMPONENTS, AUDIO_LENGTH, 2)
     stft_agent.load(STFT_MODEL_PATH)
 
     mel_env = MelAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
@@ -176,7 +176,7 @@ if __name__ == "__main__":
 
     for i in range(10000):
         env.reset()
-        sr = env.sample_rate
+        sr = SR
         audio = env.audio_signal
         with open(env.transcription, "r") as f:
             original_transcription = f.read()
