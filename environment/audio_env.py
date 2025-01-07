@@ -8,7 +8,8 @@ import librosa
 import numpy as np
 import gymnasium as gym
 from sklearn.decomposition import PCA
-from audio.audio import get_wav_info
+from audio.audio import get_wav_info, write_waw
+from audio.whisper_functions import transcribe
 
 class AudioObfuscationEnv(gym.Env):
     """
@@ -34,6 +35,7 @@ class AudioObfuscationEnv(gym.Env):
         # Go to FFT
         self.audio_signal = wav_info["data"]
         self.sample_rate = wav_info["samplerate"]
+        self.duration = wav_info["duration"]
         self.transcription = transcription
 
         s_full, phase = librosa.magphase(
@@ -66,6 +68,37 @@ class AudioObfuscationEnv(gym.Env):
         Given an action, ...
         """
         raise NotImplementedError
+    
+    def teach(self, obfuscated_audio, sr, reward_function):
+        # save to file for transcription
+        write_waw("obfuscated_audio.wav", sr, obfuscated_audio)
+        # Get transcription from ASR model
+        print("Transcription: ", self.transcription)
+        predicted_transcription = transcribe(
+            model=self.asr_model, input_file="obfuscated_audio.wav", cuda=False)
+
+        # Calculate reward
+        with open(self.transcription, "r") as f:
+            actual_transcription = f.read().replace("\n", "")
+
+        transcription_similarity = self._calculate_similarity(
+            actual_transcription, predicted_transcription, alpha=4)
+
+        audio_distance = self._noise_reward(obfuscated_audio, 1)
+        # Lower similarity and smaller noise are better
+        reward = reward_function(transcription_similarity, audio_distance)
+
+        with open(self._metrics_file, "a") as f:
+            f.write(
+                f"{self.current_index},{reward},{transcription_similarity},{audio_distance}\n")
+
+        print(f"{transcription_similarity=}")
+        print(f"{reward=}")
+
+        terminated = transcription_similarity < 0.85
+        truncated = False
+        info = {}
+        return reward, terminated, truncated, info
 
     def reset(self, *, seed=None, options=None):
         """
@@ -117,3 +150,15 @@ def preprocess_input_mfcc(audio_signal, sr=44100, n_mfcc=13, shape=256):
     mfcc_features = librosa.feature.mfcc(S=librosa.power_to_db(mel_spectrogram), n_mfcc=n_mfcc)
     flat_mfcc = mfcc_features.flatten()
     return flat_mfcc
+
+def preprocess_input(audio_signal, shape=256, num_components=18):
+    """
+    Given an audio signal, send back the expected model input
+    """
+    s_full, _ = librosa.magphase(
+        librosa.stft(audio_signal, n_fft=shape*2))
+    magnitude = np.array(s_full)
+    pca = PCA(n_components=num_components)
+    audio_pca = pca.fit_transform(magnitude)
+    flat_pca = audio_pca.flatten()
+    return flat_pca

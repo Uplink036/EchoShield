@@ -4,14 +4,15 @@ import os
 import torch
 import whisper
 from audio.whisper_functions import transcribe
-from environment.audio_env import AudioObfuscationEnv
+from environment.audio_env import AudioObfuscationEnv, preprocess_input
 import soundfile as sf
 import scipy.signal as signal
 import torch
 import numpy as np
 import keras
-from environment.stft_env import STFTAudioObfuscationEnv, preprocess_input as stft_preprocess_input
-from environment.mel_env import MelAudioObfuscationEnv, preprocess_input as mel_preprocess_input
+from environment.stft_env import STFTAudioObfuscationEnv
+from environment.mel_env import MelAudioObfuscationEnv
+from environment.dol_env import DolAudioObfuscationEnv
 from models.ddpg import DDPG
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
@@ -20,29 +21,32 @@ AUDIO_LENGTH = 257
 
 STFT_MODEL_PATH = "stft_trained_model"
 MEL_MODEL_PATH = "mel_trained_model"
+DOL_MODEL_PATH = "dol_trained_model"
 FOLDER = "testing_data/"
 
-MEL_MAGNITUDE = 500
-NUM_COMPONENTS = 18
+STFT_MAGNITUDE = 2
 
+MEL_MAGNITUDE = 500
+
+DOL_MAGNITUDE = 5000
+DOL_SAMPLES = 100
+
+NUM_COMPONENTS = 18
 
 def stft_attack(data, sr, env, agent):
     s_full, phase = librosa.magphase(
         librosa.stft(data, n_fft=512))
-    prev_state = prev_state = stft_preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
+    prev_state = prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
     tf_prev_state = keras.ops.expand_dims(
         keras.ops.convert_to_tensor(prev_state), 0
     )
-    print(tf_prev_state.shape)
     action = agent.policy(tf_prev_state)
 
     state = env.perform_attack(action, s_full, phase, sr)
     return state
 
 def mel_attack(data, sr, env, agent):
-    s_full, phase = librosa.magphase(
-        librosa.stft(data, n_fft=512))
-    prev_state = mel_preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
+    prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
     tf_prev_state = keras.ops.expand_dims(
         keras.ops.convert_to_tensor(prev_state), 0
     )
@@ -53,6 +57,16 @@ def mel_attack(data, sr, env, agent):
 
     return state
 
+def dol_attack(data, duration, sr, env, agent):
+    prev_state = preprocess_input(audio, AUDIO_LENGTH-1, NUM_COMPONENTS)
+    tf_prev_state = keras.ops.expand_dims(
+        keras.ops.convert_to_tensor(prev_state), 0
+    )
+    action = agent.policy(tf_prev_state)
+
+    state = env.perform_attack(action, data, duration, sr)
+
+    return state
 
 def get_audio_data(folder_path):
     """
@@ -161,13 +175,16 @@ if __name__ == "__main__":
     # Create the vectorized environment
     env = AudioObfuscationEnv(dataset, asr_model, 0)
     stft_env = STFTAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
-    stft_agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, 1.0)
+    stft_agent = DDPG(AUDIO_LENGTH, AUDIO_LENGTH, STFT_MAGNITUDE)
     stft_agent.load(STFT_MODEL_PATH)
 
     mel_env = MelAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
     mel_agent = DDPG(AUDIO_LENGTH, 2, MEL_MAGNITUDE)
     mel_agent.load(MEL_MODEL_PATH)
     
+    dol_env = DolAudioObfuscationEnv(dataset, asr_model, AUDIO_LENGTH)
+    dol_agent = DDPG(AUDIO_LENGTH, DOL_SAMPLES, DOL_MAGNITUDE)
+    dol_agent.load(DOL_MODEL_PATH)
     metrics_file = "metrics_compare.csv"
 
     for i in range(10000):
@@ -182,6 +199,10 @@ if __name__ == "__main__":
         
         # Mel attack
         attack_mel = mel_attack(audio, sr, mel_env, mel_agent)
+
+        # Dolphin attack
+        attack_dol = dol_attack(audio, env.duration, sr, dol_env, dol_agent)
+
         # Random noise attack
         attack_rn = random_noise_attack(0.01, audio)
 
@@ -193,8 +214,8 @@ if __name__ == "__main__":
         n_mels = 128
         attack_mn = mel_noise_attack(0, audio, sr, n_fft, hop_length, n_mels)
 
-        # Dolphin attack
-        attack_bp = amplify_dolphin_attack(audio, sr)
+        # Static Dolphin attack
+        attack_sd = amplify_dolphin_attack(audio, sr)
 
         order = 100
         attack_fir = fir_filter_attack(audio, order)
@@ -204,10 +225,11 @@ if __name__ == "__main__":
         folder = "test_attacks/"
         attack_stft_path = "attack_stft/" + str(i) + ".wav"
         attack_mel_path = "attack_mel/" + str(i) + ".wav"
+        attack_dol_path = "attack_dol/" + str(i) + ".wav"
         attack_rn_path = "attack_rn/" + str(i) + ".wav"
         attack_fn_path = "attack_fn/" + str(i) + ".wav"
         attack_mn_path = "attack_mn/" + str(i) + ".wav"
-        attack_bp_path = "attack_bp/" + str(i) + ".wav"
+        attack_sd_path = "attack_sd/" + str(i) + ".wav"
         attack_fir_path = "attack_fir/" + str(i) + ".wav"
         attack_empty_path = "attack_empty/" + str(i) + ".wav"
 
@@ -215,6 +237,8 @@ if __name__ == "__main__":
             attack_stft, folder+attack_stft_path, env, sr, asr_model, original_transcription)
         similarity_mel, audio_distance_mel = calculate_measurements(
             attack_mel, folder+attack_mel_path, env, sr, asr_model, original_transcription)
+        similarity_dol, audio_distance_dol = calculate_measurements(
+            attack_dol, folder+attack_dol_path, env, sr, asr_model, original_transcription)
         similarity_rn, audio_distance_rn,  = calculate_measurements(
             attack_rn, folder+attack_rn_path, env, sr, asr_model, original_transcription)
         similarity_fn, audio_distance_fn,  = calculate_measurements(
@@ -222,24 +246,18 @@ if __name__ == "__main__":
         similarity_mn, audio_distance_mn,  = calculate_measurements(
             attack_mn, folder+attack_mn_path, env, sr, asr_model, original_transcription)
         similarity_bp, audio_distance_bp = calculate_measurements(
-            attack_bp, folder+attack_bp_path, env, sr, asr_model, original_transcription)
+            attack_sd, folder+attack_sd_path, env, sr, asr_model, original_transcription)
         similarity_fir, audio_distance_fir = calculate_measurements(
             attack_fir, folder+attack_fir_path, env, sr, asr_model, original_transcription)
         similarity_empty, audio_distance_empty = calculate_measurements(
             attack_empty, folder+attack_empty_path, env, sr, asr_model, original_transcription)
 
-        append_to_csv(metrics_file, i, "stft", similarity_stft, audio_distance_stft, attack_stft_path
-                      )
+        append_to_csv(metrics_file, i, "stft", similarity_stft, audio_distance_stft, attack_stft_path)
         append_to_csv(metrics_file, i, "mel", similarity_mel, audio_distance_mel, attack_mel_path)
-        append_to_csv(metrics_file, i, "random_noise",
-                      similarity_rn, audio_distance_rn, attack_rn_path)
-        append_to_csv(metrics_file, i, "fft_noise",
-                      similarity_fn, audio_distance_fn, attack_fn_path)
-        append_to_csv(metrics_file, i, "mel_noise",
-                      similarity_mn, audio_distance_mn, attack_mn_path)
-        append_to_csv(metrics_file, i, "low_and_high_pass",
-                      similarity_bp, audio_distance_bp, attack_bp_path)
-        append_to_csv(metrics_file, i, "fir_filter",
-                      similarity_fir, audio_distance_fir, attack_fir_path)
-        append_to_csv(metrics_file, i, "empty",
-                      similarity_empty, audio_distance_empty, attack_empty_path)
+        append_to_csv(metrics_file, i, "dol", similarity_dol, audio_distance_dol, attack_dol_path)
+        append_to_csv(metrics_file, i, "random_noise",similarity_rn, audio_distance_rn, attack_rn_path)
+        append_to_csv(metrics_file, i, "fft_noise", similarity_fn, audio_distance_fn, attack_fn_path)
+        append_to_csv(metrics_file, i, "mel_noise", similarity_mn, audio_distance_mn, attack_mn_path)
+        append_to_csv(metrics_file, i, "low_and_high_pass", similarity_bp, audio_distance_bp, attack_sd_path)
+        append_to_csv(metrics_file, i, "fir_filter", similarity_fir, audio_distance_fir, attack_fir_path)
+        append_to_csv(metrics_file, i, "empty", similarity_empty, audio_distance_empty, attack_empty_path)

@@ -6,6 +6,7 @@ import os
 import torch
 import pandas as pd
 import whisper
+import os
 
 def transcribe(model: whisper, input_file: str, cuda: bool = False):
     """
@@ -62,6 +63,14 @@ def transcribe_compare_annotations(model: whisper, audio_dir, cuda: bool = False
         result_df.loc[len(result_df)] = [file, annotation, transcription]
         print(result_df.tail(1))
     return result_df
+
+def get_asr():
+    """
+    Get an (whisper) Automatic Speech Recognition (ASR) model.
+    """
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    asr_model = whisper.load_model("base").to(device)
+    return asr_model
 
 WAW_FILEPATH = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
