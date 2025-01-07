@@ -3,17 +3,14 @@ This is a file that is meant to bring together other files and test our RL model
 """
 
 import os
-import whisper
-import torch
 import numpy as np
 import keras
 from environment.stft_env import STFTAudioObfuscationEnv, preprocess_input
-from models.ddpg import DDPG
+from models.ddpg import DDPG, update_target
 from data_splitting import train_test_split
-
 from audio.audio import get_audio_data
 from audio.whisper_functions import get_asr
-from models.ddpg import update_target
+
 
 DATA_FOLDER         = "data/archive/Raw JL corpus (unchecked and unannotated)/JL(wav+txt)/"
 TRAINING_FILEPATH   = "training_data/"
