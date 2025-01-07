@@ -1,11 +1,9 @@
 import librosa
 import numpy as np
 import keras
-from keras.metrics import BinaryAccuracy, Precision, Recall, F1Score
 from math import ceil
-
 from sklearn.model_selection import train_test_split
-
+from keras.metrics import BinaryAccuracy, Precision, Recall, F1Score
 from defence import get_audio_data
 
 class ClassifyDetector:
