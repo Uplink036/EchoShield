@@ -6,7 +6,6 @@ import numpy as np
 import speech_recognition as google_sr
 import os
 import json
-
 from defence import get_audio_data
 from sklearn.metrics import confusion_matrix
 
