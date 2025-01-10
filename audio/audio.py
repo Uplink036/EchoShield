@@ -4,7 +4,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import librosa
 import soundfile as sf
+import os
 
+
+def get_audio_data(folder_path):
+    """
+    Given a path, find all files in that path that ends with ".waw" and returns them.
+    """
+    files = os.listdir(folder_path)
+    audio_files = [folder_path + f for f in files if f.endswith(".wav")]
+    transcriptions = [f.replace(".wav", ".txt") for f in audio_files]
+    dataset = [
+        {"audio_file": f, "transcription": t} for f, t in zip(audio_files, transcriptions)
+    ]
+    return dataset
 
 def get_wav_info(filepath):
     """
