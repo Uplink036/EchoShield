@@ -149,7 +149,7 @@ class CompareDetector:
 if __name__ == "__main__":
     detector = CompareDetector("base", threshold=0.85)
     directory = "test_attacks/"
-    attacks = ["attack_stft/", "attack_mel/", "attack_dol/", "attack_sd/"]
+    attacks = ["attack_stft/", "attack_mel/", "attack_dol/", "attack_sd/", "attack_rn/"]
     clean = "attack_empty/"
 
     result_file = "defence/compare_detect_results.csv"
