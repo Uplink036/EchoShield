@@ -142,12 +142,9 @@ def fir_filter_attack(data, order):
 def empty_attack(data):
     return data
 
-
 def append_to_csv(file, index, attack, similarity, audio_distance, audio_path):
-    success_threshold = 0.85
-    success = 1 if similarity <= success_threshold else 0
     with open(file, "a") as f:
-        f.write(f"{index},{attack},{similarity},{audio_distance},{success},{audio_path}\n")
+        f.write(f"{index},{attack},{similarity},{audio_distance},{audio_path}\n")
 
 
 def calculate_measurements(attack, filepath, env, sr, asr_model, original_transcription):
@@ -158,8 +155,8 @@ def calculate_measurements(attack, filepath, env, sr, asr_model, original_transc
     sf.write(filepath, attack, sr)
     transcription = transcribe(asr_model, filepath, cuda=False)
     similarity = env._calculate_similarity(
-        original_transcription, transcription)
-    audio_distance = env._noise_reward(attack, 1.0)
+        original_transcription, transcription, alpha=1.0)
+    audio_distance = env._noise_reward(attack, alpha=1.0)
     return similarity, audio_distance
 
 
