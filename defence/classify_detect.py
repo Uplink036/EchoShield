@@ -219,7 +219,8 @@ def mel_spectrogram_generator(files, labels, batch_size=5, preprocess_fn=None):
 
 if __name__ == "__main__":
     directory = "test_attacks/"
-    attacks = ["attack_sd/"]
+
+    attacks = ["attack_stft/", "attack_mel/", "attack_dol/", "attack_sd/", "attack_rn/"]
     clean = "attack_empty/"
 
     result_file = "defence/classify_detect_results.csv"
