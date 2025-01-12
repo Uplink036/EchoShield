@@ -56,6 +56,8 @@ This project, due to how it was built has 3 seperate part to run, depending on w
 
 To run the training of the model, you need to run trainMEL.py, trainSTFT.py, trainDOT.py sepeartly. After this you will have each of model weights. Then you have to run benchmark_attacks.py, to get the comparision between them. This will create the needed files for the defense, as it expects an attack file and a clean file, which the benchmark creates. In the defence folder, you can find classify_detect.py and compare_detect.py, which you can run to get the defence results. 
 
+All of these can be found in the Makefile.
+
 To visualize your results, you can use the provided visualize.ipynb jupyter notebook.
 
 ## Authors
