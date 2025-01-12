@@ -41,8 +41,6 @@ The evaluation of the model will be done using the following metrics:
 - Minimal Change
 - Text Similarit
 
-
-
 ## How to Use
 
 ### Prerequisites
@@ -52,21 +50,18 @@ make dependencies
 make data
 ```
 
-### Build
-
-TODO: Explain how the whole project can be build.
-
-### Test
-
-TODO: Explain how unit- or integreation tests can be executed.
-
 ### Run
 
-TODO: Explain how to run the project (client, server etc.).
+This project, due to how it was built has 3 seperate part to run, depending on what you want to do. 
+
+To run the training of the model, you need to run trainMEL.py, trainSTFT.py, trainDOT.py sepeartly. After this you will have each of model weights. Then you have to run benchmark_attacks.py, to get the comparision between them. This will create the needed files for the defense, as it expects an attack file and a clean file, which the benchmark creates. In the defence folder, you can find classify_detect.py and compare_detect.py, which you can run to get the defence results. 
+
+To visualize your results, you can use the provided visualize.ipynb jupyter notebook.
 
 ## Authors
 - [Uplink036](https://github.com/Uplink036)
 - [Adam Mützell](https://github.com/AdamMutzell)
+
 ### Contributions
 
 The dataset was gathered from the following people, who asked you cite them as follows: "Jesin James, Li Tian, Catherine Watson, "An Open Source Emotional Speech Corpus for Human Robot Interaction Applications", in Proc. Interspeech, 2018."
