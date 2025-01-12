@@ -69,10 +69,13 @@ TODO: Explain how to run the project (client, server etc.).
 ## Authors
 - [Uplink036](https://github.com/Uplink036)
 - [Adam Mützell](https://github.com/AdamMutzell)
+### Contributions
+
+The dataset was gathered from the following people, who asked you cite them as follows: "Jesin James, Li Tian, Catherine Watson, "An Open Source Emotional Speech Corpus for Human Robot Interaction Applications", in Proc. Interspeech, 2018."
 
 ## License
 
-Copyright © 2023 Uplink036 
+Copyright © 2025 Uplink036 
 This work is licensed under [MIT]
 
 
