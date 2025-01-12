@@ -3,21 +3,17 @@
 
 This project aims to develop a reinforcement learning-based filter that confuses ASR models, like OpenAI’s Whisper, while remaining intelligible to humans. We will compare its effectiveness across multiple ASR systems and explore both static (e.g., band-pass filters) and dynamic (e.g., RL-based) defense mechanisms against such adversarial attacks. 
 
-TODO: Add image that helps to understand the project.
-This could be an architectural diagram or a screenshot of the application.
 
-## Architecture Overview (optional)
-
-TODO: Add simple diagram that explains the architecture.
-CNC Strucutre
+## RL Data Flow
+### Attack
 ```mermaid
 architecture-beta
     service audio(database)[audio]
     service model(abc)[RL Model] 
     service asr_normal(internet)[ASR] 
-    service asr_attack(internet)[ASRwhisper]
-    service text_normal(abc)[TextNormal]
-    service text_attack(abc)[TextGarbeld]
+    service asr_attack(internet)[ASR]
+    service text_normal(abc)[Normal Text]
+    service text_attack(abc)[Garbled Text]
     service eval(abc)[Evaluate]
   
     junction a_m
@@ -41,8 +37,7 @@ architecture-beta
     eval:L --> T:model
 ```
 
-The evaluation model will be using three metrics. 
-- Word Error Rate
+The evaluation of the model will be done using the following metrics: 
 - Minimal Change
 - Text Similarit
 
@@ -51,8 +46,11 @@ The evaluation model will be using three metrics.
 ## How to Use
 
 ### Prerequisites
-
-TODO: Explain which steps and dependencies are required to run and build the project (e.g., pip install -r requirements.txt)
+You need python3 and an audio dataset. We choose a short but diverse audio dataset, found [here](https://github.com/tli725/JL-Corpus). You can download all the required data using the following commands:
+``` bash
+make dependencies
+make data
+```
 
 ### Build
 
